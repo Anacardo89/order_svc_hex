@@ -1,0 +1,16 @@
+db:
+  max_conns:          10
+  min_conns:          2
+  max_conn_lifetime:  "10m"
+  max_conn_idle_time: "5m"
+kafka:
+  brokers:
+    - localhost:9092
+  group_id: order-service
+  topics:
+    order_created:
+      name: orders.created
+      dlq: orders.created.dlq
+    order_status_updated:
+      name: orders.status_updated
+      dlq: orders.status_updated.dlq
