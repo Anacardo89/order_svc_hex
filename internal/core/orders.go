@@ -37,3 +37,13 @@ type OrderEvent struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	EventType EventType      `json:"event_type"`
 }
+
+func (e *OrderEvent) ToOrder() *Order {
+	return &Order{
+		ID:        e.OrderID,
+		Items:     e.Items,
+		Status:    e.Status,
+		CreatedAt: e.CreatedAt,
+		UpdatedAt: e.UpdatedAt,
+	}
+}

@@ -1,0 +1,80 @@
+
+networks:
+  order-svc-network:
+
+volumes:
+  order-svc-db-volume:
+  order-svc-kafka-volume:
+
+services:
+  # App
+  order-svc:
+    build:
+      context: .
+    container_name: order-svc
+    depends_on:
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      APP_HOME:     ${APP_HOME}
+      CFG_PATH:     ${CFG_PATH}
+      HOST:         ${HOST}
+      PORT:         ${PORT}
+      DB_DSN:       ${DB_DSN}
+      KAFKA_BROKER: ${KAFKA_BROKER}
+    ports:
+      - "${PORT}:${PORT}"
+    networks:
+      - order-svc-network
+  # DB
+  db:
+    image: postgres:16
+    container_name: order-svc-db
+    environment:
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB:       ${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout:  5s
+      retries:  10
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    networks:
+      - order-svc-network
+    volumes:
+      - order-svc-db-volume:/var/lib/postgresql/data
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    hostname: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - order-svc-network
+    ports:
+      - "9092:9092"
+    volumes:
+      - order-svc-kafka-volume:/var/lib/kafka/data

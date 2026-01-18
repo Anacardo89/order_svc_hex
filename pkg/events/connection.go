@@ -1,22 +1,22 @@
 package events
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-type Connection struct {
+type KafkaConnection struct {
 	Brokers string
 }
 
-func NewKafkaConnection(brokers []string) *Connection {
-	return &Connection{
-		Brokers: strings.Join(brokers, ","),
+func NewKafkaConnection(brokers string) *KafkaConnection {
+	return &KafkaConnection{
+		Brokers: brokers,
 	}
 }
 
-func (c *Connection) GetConsumer(groupID string) (*kafka.Consumer, error) {
+func (c *KafkaConnection) MakeConsumer(groupID string, topics []string) (*kafka.Consumer, error) {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": c.Brokers,
 		"group.id":          groupID,
@@ -25,11 +25,14 @@ func (c *Connection) GetConsumer(groupID string) (*kafka.Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	err = consumer.SubscribeTopics(topics, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to subscribe to topics: %w", err)
+	}
 	return consumer, nil
 }
 
-func (c *Connection) GetProducer() (*kafka.Producer, error) {
+func (c *KafkaConnection) MakeProducer() (*kafka.Producer, error) {
 	producer, err := kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": c.Brokers,
 	})

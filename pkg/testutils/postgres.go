@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -46,4 +47,16 @@ func ConnectTestDB(dsn string) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping test DB: %w", err)
 	}
 	return sqlDB, nil
+}
+
+func SeedTestDB(ctx context.Context, db *sql.DB, seedPath string) error {
+	seed, err := os.ReadFile(seedPath)
+	if err != nil {
+		return fmt.Errorf("failed to read seed file: %w", err)
+	}
+	_, err = db.Exec(string(seed))
+	if err != nil {
+		return fmt.Errorf("failed to execute seed: %w", err)
+	}
+	return nil
 }
