@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/Anacardo89/order_svc_hex/config"
@@ -30,21 +31,32 @@ func initDB(cfg config.Config) (ports.OrderRepo, func(), error) {
 
 func initEvents(cfg config.Kafka) (ports.OrderConsumer, func(), ports.OrderDLQProducer, func(), *kafkaevents.OrderEventHandler, error) {
 	conn := events.NewKafkaConnection(cfg.Brokers)
+	allTopics := []string{}
 	consumerTopics := []string{}
 	dlqTopics := make(map[string]*string)
 	rawDLQTopic := ""
 	for k, v := range cfg.Topics {
 		if v.Name == "" {
+			allTopics = append(allTopics, v.DLQ)
 			rawDLQTopic = v.DLQ
 			continue
 		}
+		allTopics = append(allTopics, v.Name)
+		allTopics = append(allTopics, v.DLQ)
 		consumerTopics = append(consumerTopics, v.Name)
 		dlqTopics[k] = &v.DLQ
+	}
+	err := events.EnsureTopics(cfg.Brokers, allTopics, 1)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
 	}
 	consumer, err := conn.MakeConsumer(cfg.GroupID, consumerTopics)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
+	consumer.Poll(100)
+	assigned, err := consumer.Assignment()
+	fmt.Println("Assigned partitions:", assigned)
 	rawProducer, err := conn.MakeProducer()
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
