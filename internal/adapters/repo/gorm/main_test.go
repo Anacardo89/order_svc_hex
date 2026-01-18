@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Anacardo89/order_svc_hex/internal/ports"
 )
 
 var (
 	dsn      string
 	seedPath string
-	repo     *OrderRepo
+	repo     ports.OrderRepo
 )
 
 func TestMain(m *testing.M) {

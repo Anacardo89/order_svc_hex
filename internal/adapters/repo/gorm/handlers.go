@@ -1,11 +1,16 @@
 package gormrepo
 
-import "gorm.io/gorm"
+import (
+	"github.com/Anacardo89/order_svc_hex/internal/ports"
+	"gorm.io/gorm"
+)
 
 type OrderRepo struct {
 	db *gorm.DB
 }
 
-func New(db *gorm.DB) *OrderRepo {
-	return &OrderRepo{db: db}
+func NewOrderRepo(db *gorm.DB) ports.OrderRepo {
+	return &OrderRepo{
+		db: db,
+	}
 }

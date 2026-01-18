@@ -4,13 +4,18 @@ db:
   max_conn_lifetime:  "10m"
   max_conn_idle_time: "5m"
 kafka:
-  brokers:
-    - localhost:9092
   group_id: order-service
   topics:
-    order_created:
+    OrderTransport:
+      name: 
+      dlq:  orders.transport.dlq
+    OrderCreated:
       name: orders.created
-      dlq: orders.created.dlq
-    order_status_updated:
+      dlq:  orders.created.dlq
+    OrderStatusUpdated:
       name: orders.status_updated
-      dlq: orders.status_updated.dlq
+      dlq:  orders.status_updated.dlq
+  worker_pool_size: 10
+  batch_size:       50
+  batch_timeout:    "10s"
+  queue_size:       100

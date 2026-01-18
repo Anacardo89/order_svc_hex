@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/Anacardo89/order_svc_hex/config"
+	"github.com/Anacardo89/order_svc_hex/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/pkg/db"
 	"github.com/Anacardo89/order_svc_hex/pkg/testutils"
 )
 
-func InitDB(ctx context.Context, dsn string) (*OrderRepo, error) {
+func InitDB(ctx context.Context, dsn string) (ports.OrderRepo, error) {
 	dbCfg := config.DB{
 		DSN:             dsn,
 		MaxConns:        5,
@@ -22,11 +23,11 @@ func InitDB(ctx context.Context, dsn string) (*OrderRepo, error) {
 	if err != nil {
 		return nil, err
 	}
-	repo := New(dbConn)
+	repo := NewOrderRepo(dbConn)
 	return repo, nil
 }
 
-func BuildTestDBEnv(ctx context.Context) (*OrderRepo, string, func(), string, error) {
+func BuildTestDBEnv(ctx context.Context) (ports.OrderRepo, string, func(), string, error) {
 	dsn, closeDB, err := testutils.StartPostgresContainer(ctx)
 	if err != nil {
 		return nil, "", nil, "", err
@@ -42,7 +43,7 @@ func BuildTestDBEnv(ctx context.Context) (*OrderRepo, string, func(), string, er
 		closeDB()
 		return nil, "", nil, "", err
 	}
-	if err := db.MigrateDB(dsn, migratePath, db.MigrateUp); err != nil {
+	if err := db.Migrate(dsn, migratePath, db.MigrateUp); err != nil {
 		closeDB()
 		return nil, "", nil, "", err
 	}

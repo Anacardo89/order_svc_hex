@@ -19,7 +19,7 @@ const (
 	MigrateDown MigrateDirection = "down"
 )
 
-func MigrateDB(dsn, migrationsPath string, direction MigrateDirection) error {
+func Migrate(dsn, migrationsPath string, direction MigrateDirection) error {
 	if _, err := os.Stat(migrationsPath); os.IsNotExist(err) {
 		return fmt.Errorf("migration directory not found at: %s", migrationsPath)
 	}
@@ -42,7 +42,7 @@ func MigrateDB(dsn, migrationsPath string, direction MigrateDirection) error {
 	return nil
 }
 
-func SeedDB(ctx context.Context, gormDB *gorm.DB, seedPath string) error {
+func Seed(ctx context.Context, gormDB *gorm.DB, seedPath string) error {
 	seed, err := os.ReadFile(seedPath)
 	if err != nil {
 		return fmt.Errorf("failed to read seed file: %w", err)

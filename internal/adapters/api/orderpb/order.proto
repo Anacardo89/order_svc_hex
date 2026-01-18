@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package order;
+
+option go_package = "github.com/Anacardo89/order_svc_hex/internal/adapters/api/orderpb;orderpb";
+
+import "google/protobuf/timestamp.proto";
+
+// gRPC service
+service OrderService {
+    rpc GetOrderByID(GetOrderByIDRequest) returns (Order);
+    rpc GetOrdersByStatus(GetOrdersByStatusRequest) returns (stream Order);
+}
+
+// Order Status enum
+enum OrderStatus {
+    STATUS_PENDING = 0;
+    STATUS_CONFIRMED = 1;
+    STATUS_FAILED = 2;
+}
+
+// Order message
+message Order {
+    string id = 1;
+    map<string, int32> items = 2;
+    OrderStatus status = 3;
+    google.protobuf.Timestamp created_at = 4;
+    google.protobuf.Timestamp updated_at = 5;
+}
+
+// Request by ID
+message GetOrderByIDRequest {
+    string id = 1;
+}
+
+// Request by status
+message GetOrdersByStatusRequest {
+    OrderStatus status = 1;
+}

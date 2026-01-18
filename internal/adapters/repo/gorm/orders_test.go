@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/Anacardo89/order_svc_hex/internal/core"
-	"github.com/Anacardo89/order_svc_hex/pkg/db"
 	"github.com/Anacardo89/order_svc_hex/pkg/testutils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -15,9 +14,9 @@ import (
 
 func TestOrderRepo_Create(t *testing.T) {
 	ctx := context.Background()
-	err := db.SeedDB(ctx, repo.db, seedPath)
-	require.NoError(t, err)
 	dbConn, err := testutils.ConnectTestDB(dsn)
+	require.NoError(t, err)
+	err = testutils.SeedTestDB(ctx, dbConn, seedPath)
 	require.NoError(t, err)
 
 	verifyQuery := `
@@ -79,7 +78,9 @@ func TestOrderRepo_Create(t *testing.T) {
 
 func TestOrderRepo_GetByID(t *testing.T) {
 	ctx := context.Background()
-	err := db.SeedDB(ctx, repo.db, seedPath)
+	dbConn, err := testutils.ConnectTestDB(dsn)
+	require.NoError(t, err)
+	err = testutils.SeedTestDB(ctx, dbConn, seedPath)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -147,7 +148,9 @@ func TestOrderRepo_GetByID(t *testing.T) {
 
 func TestOrderRepo_GetByStatus(t *testing.T) {
 	ctx := context.Background()
-	err := db.SeedDB(ctx, repo.db, seedPath)
+	dbConn, err := testutils.ConnectTestDB(dsn)
+	require.NoError(t, err)
+	err = testutils.SeedTestDB(ctx, dbConn, seedPath)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -223,8 +226,21 @@ func TestOrderRepo_GetByStatus(t *testing.T) {
 
 func TestOrderRepo_UpdateStatus(t *testing.T) {
 	ctx := context.Background()
-	err := db.SeedDB(ctx, repo.db, seedPath)
+	dbConn, err := testutils.ConnectTestDB(dsn)
 	require.NoError(t, err)
+	err = testutils.SeedTestDB(ctx, dbConn, seedPath)
+	require.NoError(t, err)
+
+	verifyQuery := `
+		SELECT
+			id,
+			items,
+			status,
+			created_at,
+			updated_at
+		FROM orders
+		WHERE id = $1
+	;`
 
 	tests := []struct {
 		name        string
@@ -267,7 +283,13 @@ func TestOrderRepo_UpdateStatus(t *testing.T) {
 			}
 
 			var updated Order
-			err = repo.db.WithContext(ctx).First(&updated, "id = ?", tt.id).Error
+			err = dbConn.QueryRow(verifyQuery, tt.id).Scan(
+				&updated.ID,
+				&updated.Items,
+				&updated.Status,
+				&updated.CreatedAt,
+				&updated.UpdatedAt,
+			)
 			if tt.name == "non-existent order" {
 				require.Error(t, err)
 				return

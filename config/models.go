@@ -4,15 +4,22 @@ import "time"
 
 func New() *Config {
 	return &Config{
-		DB:    DB{},
-		Kafka: Kafka{},
+		Server: Server{},
+		DB:     DB{},
+		Kafka:  Kafka{},
 	}
 }
 
 type Config struct {
 	AppHome string `env:"APP_HOME" envDefault:""`
-	DB      DB     `yaml:"db"`
-	Kafka   Kafka  `yaml:"kafka"`
+	Server  Server
+	DB      DB    `yaml:"db"`
+	Kafka   Kafka `yaml:"kafka"`
+}
+
+type Server struct {
+	Host string `env:"HOST" envDefault:"localhost"`
+	Port string `env:"PORT" envDefault:"8080"`
 }
 
 type DB struct {
@@ -24,9 +31,13 @@ type DB struct {
 }
 
 type Kafka struct {
-	Brokers []string         `yaml:"brokers"`
-	GroupID string           `yaml:"group_id"`
-	Topics  map[string]Topic `yaml:"topics"`
+	Brokers        string           `env:"KAFKA_BROKER" envDefault:"kafka:9092"`
+	GroupID        string           `yaml:"group_id"`
+	Topics         map[string]Topic `yaml:"topics"`
+	WorkerPoolSize int              `yaml:"worker_pool_size"`
+	BatchSize      int              `yaml:"batch_size"`
+	BatchTimeout   time.Duration    `yaml:"batch_timeout"`
+	QueueSize      int              `yaml:"queue_size"`
 }
 
 type Topic struct {
