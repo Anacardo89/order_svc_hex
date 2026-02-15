@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/config"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/messaging"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/rpc"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/messaging/kafka/orderconsumer"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/rpc/grpc/orderserver"
 )
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 	}
 	defer closeConsumer()
 	defer closeDLQProducer()
-	workerPool := messaging.NewWorkerPool(
+	workerPool := orderconsumer.NewWorkerPool(
 		dbRepo,
 		dlqProducer,
 		consumerHandler,
@@ -42,8 +42,8 @@ func main() {
 		cfg.Kafka.BatchTimeout,
 		cfg.Kafka.WorkerPoolSize,
 	)
-	gRPCservice := rpc.NewOrderGRPCService(dbRepo)
-	gRPCServer, err := rpc.NewOrderGRPCServer(cfg.Server.Port, gRPCservice)
+	gRPCservice := orderserver.NewOrderGRPCService(dbRepo)
+	gRPCServer, err := orderserver.NewOrderGRPCServer(cfg.Server.Port, gRPCservice)
 	if err != nil {
 		slog.Error("failed to create gRPC server", "error", err)
 		os.Exit(1)

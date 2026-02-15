@@ -31,16 +31,11 @@ type DB struct {
 }
 
 type Kafka struct {
-	Brokers        string           `env:"KAFKA_BROKER" envDefault:"kafka:9092"`
-	GroupID        string           `yaml:"group_id"`
-	Topics         map[string]Topic `yaml:"topics"`
-	WorkerPoolSize int              `yaml:"worker_pool_size"`
-	BatchSize      int              `yaml:"batch_size"`
-	BatchTimeout   time.Duration    `yaml:"batch_timeout"`
-	QueueSize      int              `yaml:"queue_size"`
-}
-
-type Topic struct {
-	Name string `yaml:"name"`
-	DLQ  string `yaml:"dlq"`
+	Brokers        string            `env:"KAFKA_BROKER" envDefault:"kafka:9092"`
+	GroupID        string            `yaml:"group_id"`
+	Topics         map[string]string `yaml:"topics"`
+	WorkerPoolSize int               `yaml:"worker_pool_size"`
+	BatchSize      int               `yaml:"batch_size"`
+	BatchTimeout   time.Duration     `yaml:"batch_timeout"`
+	QueueSize      int               `yaml:"queue_size"`
 }
