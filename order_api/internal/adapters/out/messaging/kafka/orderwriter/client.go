@@ -3,15 +3,16 @@ package orderwriter
 import (
 	"fmt"
 
+	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/events"
 )
 
-type KafkaClient struct {
+type OrderWriterClient struct {
 	producerCreated      *Producer
 	producerStatusUpdate *Producer
 }
 
-func NewKafkaClient(kc *events.KafkaConnection, topics map[string]string) (*KafkaClient, error) {
+func NewOrderWriterClient(kc *events.KafkaConnection, topics map[string]string) (ports.OrderWriter, error) {
 	createdTopic, ok := topics[string(TopicOrderCreated)]
 	if !ok {
 		return nil, fmt.Errorf("missing topic: %s", TopicOrderCreated)
@@ -28,13 +29,13 @@ func NewKafkaClient(kc *events.KafkaConnection, topics map[string]string) (*Kafk
 	if err != nil {
 		return nil, err
 	}
-	return &KafkaClient{
+	return &OrderWriterClient{
 		producerCreated:      pc,
 		producerStatusUpdate: ps,
 	}, nil
 }
 
-func (c *KafkaClient) Close() {
+func (c *OrderWriterClient) Close() {
 	c.producerCreated.producer.Flush(5000)
 	c.producerCreated.producer.Close()
 	c.producerStatusUpdate.producer.Flush(5000)

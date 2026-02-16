@@ -2,48 +2,55 @@ package orderconsumer
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"log/slog"
 
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-func (c *OrderConsumer) Consume(ctx context.Context, handler ports.OrderEventHandler) error {
+func (c *OrderConsumerClient) Consume(ctx context.Context) error {
+	// Error handling
+	fail := func(msg *kafka.Message, reason string, err error) {
+		dlqMsg := makeDlqMessage(msg, reason, err)
+		if err := c.dlqClient.PublishDLQ(ctx, dlqMsg); err != nil {
+			slog.Error("failed to send to DLQ on error", "error", err, "dlq_msg", dlqMsg)
+		}
+	}
+
+	// Execution
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			msg, err := c.consumer.ReadMessage(-1)
+			msg, err := c.orderConsumer.consumer.ReadMessage(-1)
 			if err != nil {
-				slog.Error("[Consume - ReadMessage]", "error", err)
+				slog.Error("failed to read message", "error", err)
 				continue
 			}
-			var event core.OrderEvent
-			if err := json.Unmarshal(msg.Value, &event); err != nil {
-				slog.Error("[Consume] - json_unmarshal_failed", "error", err, "payload", msg.Value)
-				if err := c.dlqProducer.PublishRawDLQ(ctx, msg, "json_unmarshal_failed"); err != nil {
-					slog.Error("[Consume] - failed to sent to DLQ on json_unmarshal_failed", "error", err, "payload", string(msg.Value))
-				}
+			order, err := mapEventPaylodToOrder(msg)
+			if err != nil {
+				slog.Error("failed to unmarshal payload", "error", err)
+				fail(msg, "unmarshal_failed", err)
 				continue
 			}
-			switch event.EventType {
-			case core.EventOrderCreated:
-				if err := handler.OnOrderCreated(ctx, event); err != nil {
-					slog.Error("[OnOrderCreated]", "error", err, "payload", event)
-					continue
+			switch *msg.TopicPartition.Topic {
+			case "order.created":
+				if err := c.handler.OnOrderCreated(ctx, *order); err != nil {
+					slog.Error("failed to handle order created", "error", err)
+					fail(msg, "handler_error", err)
 				}
-			case core.EventOrderStatusUpdated:
-				if err := handler.OnOrderStatusUpdated(ctx, event); err != nil {
-					slog.Error("[OnOrderStatusUpdated]", "error", err, "payload", event)
-					continue
+			case "order.status.updated":
+				if err := c.handler.OnOrderStatusUpdated(ctx, *order); err != nil {
+					slog.Error("failed to handle order status updated", "error", err)
+					fail(msg, "handler_error", err)
 				}
 			default:
-				slog.Error("[Consume] - invalid_eventType", "payload", event)
-				if err := c.dlqProducer.PublishRawDLQ(ctx, msg, "invalid_eventType"); err != nil {
-					slog.Error("[Consume] - failed to sent to DLQ on invalid_eventType", "error", err, "payload", string(msg.Value))
-				}
+				slog.Error("message with unknown topic", "msg", msg)
+				fail(msg, "unknown_topic", errors.New("unknown topic"))
+			}
+			if _, err := c.orderConsumer.consumer.CommitMessage(msg); err != nil {
+				slog.Error("failed to commit offset", "error", err)
 			}
 		}
 	}

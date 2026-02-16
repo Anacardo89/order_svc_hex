@@ -9,7 +9,7 @@ import "google/protobuf/timestamp.proto";
 // gRPC service
 service OrderService {
     rpc GetOrderByID(GetOrderByIDRequest) returns (Order);
-    rpc GetOrdersByStatus(GetOrdersByStatusRequest) returns (stream Order);
+    rpc ListOrdersByStatus(ListOrdersByStatusRequest) returns (stream Order);
 }
 
 // Order Status enum
@@ -34,6 +34,6 @@ message GetOrderByIDRequest {
 }
 
 // Request by status
-message GetOrdersByStatusRequest {
+message ListOrdersByStatusRequest {
     OrderStatus status = 1;
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/ptr"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/google/uuid"
@@ -58,5 +59,17 @@ func mapEventPaylodToOrder(msg *kafka.Message) (*core.Order, error) {
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown topic: %s", *msg.TopicPartition.Topic)
+	}
+}
+
+func makeDlqMessage(msg *kafka.Message, reason string, err error) ports.DLQMessage {
+	return ports.DLQMessage{
+		Reason:        reason,
+		Error:         err,
+		OriginalTopic: *msg.TopicPartition.Topic,
+		OriginalKey:   msg.Key,
+		OriginalValue: msg.Value,
+		Partition:     msg.TopicPartition.Partition,
+		Offset:        int64(msg.TopicPartition.Offset),
 	}
 }

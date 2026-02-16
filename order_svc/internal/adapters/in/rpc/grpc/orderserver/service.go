@@ -1,39 +1,16 @@
 package orderserver
 
 import (
-	"context"
-
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
-	"github.com/google/uuid"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 )
 
-func (s *OrderGRPCService) GetOrderByID(ctx context.Context, id string) (*core.Order, error) {
-	orderID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, err
-	}
-	order, err := s.repo.GetByID(ctx, orderID)
-	if err != nil {
-		return nil, err
-	}
-	return order, nil
+type OrderGRPCService struct {
+	repo core.OrderRepo
 }
 
-func (s *OrderGRPCService) GetOrdersByStatus(ctx context.Context, status core.Status) (<-chan *core.Order, error) {
-	orders, err := s.repo.ListByStatus(ctx, status)
-	if err != nil {
-		return nil, err
+func NewOrderGRPCService(repo core.OrderRepo) ports.OrderServer {
+	return &OrderGRPCService{
+		repo: repo,
 	}
-	out := make(chan *core.Order, len(orders))
-	go func() {
-		defer close(out)
-		for _, o := range orders {
-			select {
-			case <-ctx.Done():
-				return
-			case out <- o:
-			}
-		}
-	}()
-	return out, nil
 }

@@ -2,9 +2,18 @@ package ports
 
 import (
 	"context"
-	"encoding/json"
 )
 
+type DLQMessage struct {
+	Reason        string
+	Error         error
+	OriginalTopic string
+	OriginalKey   []byte
+	OriginalValue []byte
+	Partition     int32
+	Offset        int64
+}
+
 type OrderDLQ interface {
-	PublishDLQ(ctx context.Context, payload json.RawMessage, reason string, err error) error
+	PublishDLQ(ctx context.Context, msg DLQMessage) error
 }

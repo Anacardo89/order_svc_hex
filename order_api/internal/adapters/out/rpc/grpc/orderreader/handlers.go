@@ -6,18 +6,19 @@ import (
 
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/core"
 	"github.com/Anacardo89/order_svc_hex/order_api/proto/orderpb"
+	"github.com/google/uuid"
 )
 
-func (c *OrderReaderClient) GetOrderByID(ctx context.Context, id string) (*core.OrderResp, error) {
-	resp, err := c.client.GetOrderByID(ctx, &orderpb.GetOrderByIDRequest{Id: id})
+func (c *OrderReaderClient) GetByID(ctx context.Context, id uuid.UUID) (*core.OrderResp, error) {
+	resp, err := c.client.GetOrderByID(ctx, &orderpb.GetOrderByIDRequest{Id: id.String()})
 	if err != nil {
 		return nil, err
 	}
 	return fromProtoOrder(resp), nil
 }
 
-func (c *OrderReaderClient) ListOrdersByStatus(ctx context.Context, status core.Status) ([]*core.OrderResp, error) {
-	stream, err := c.client.GetOrdersByStatus(ctx, &orderpb.GetOrdersByStatusRequest{Status: mapStatusToProto(status)})
+func (c *OrderReaderClient) ListByStatus(ctx context.Context, status core.Status) ([]*core.OrderResp, error) {
+	stream, err := c.client.ListOrdersByStatus(ctx, &orderpb.ListOrdersByStatusRequest{Status: mapStatusToProto(status)})
 	if err != nil {
 		return nil, err
 	}

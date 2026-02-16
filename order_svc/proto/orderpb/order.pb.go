@@ -195,27 +195,27 @@ func (x *GetOrderByIDRequest) GetId() string {
 }
 
 // Request by status
-type GetOrdersByStatusRequest struct {
+type ListOrdersByStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        OrderStatus            `protobuf:"varint,1,opt,name=status,proto3,enum=order.OrderStatus" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetOrdersByStatusRequest) Reset() {
-	*x = GetOrdersByStatusRequest{}
+func (x *ListOrdersByStatusRequest) Reset() {
+	*x = ListOrdersByStatusRequest{}
 	mi := &file_contracts_orders_order_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetOrdersByStatusRequest) String() string {
+func (x *ListOrdersByStatusRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetOrdersByStatusRequest) ProtoMessage() {}
+func (*ListOrdersByStatusRequest) ProtoMessage() {}
 
-func (x *GetOrdersByStatusRequest) ProtoReflect() protoreflect.Message {
+func (x *ListOrdersByStatusRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_contracts_orders_order_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -227,12 +227,12 @@ func (x *GetOrdersByStatusRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetOrdersByStatusRequest.ProtoReflect.Descriptor instead.
-func (*GetOrdersByStatusRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ListOrdersByStatusRequest.ProtoReflect.Descriptor instead.
+func (*ListOrdersByStatusRequest) Descriptor() ([]byte, []int) {
 	return file_contracts_orders_order_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *GetOrdersByStatusRequest) GetStatus() OrderStatus {
+func (x *ListOrdersByStatusRequest) GetStatus() OrderStatus {
 	if x != nil {
 		return x.Status
 	}
@@ -257,16 +257,16 @@ const file_contracts_orders_order_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"%\n" +
 	"\x13GetOrderByIDRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"F\n" +
-	"\x18GetOrdersByStatusRequest\x12*\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"G\n" +
+	"\x19ListOrdersByStatusRequest\x12*\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x12.order.OrderStatusR\x06status*J\n" +
 	"\vOrderStatus\x12\x12\n" +
 	"\x0eSTATUS_PENDING\x10\x00\x12\x14\n" +
 	"\x10STATUS_CONFIRMED\x10\x01\x12\x11\n" +
-	"\rSTATUS_FAILED\x10\x022\x8e\x01\n" +
+	"\rSTATUS_FAILED\x10\x022\x90\x01\n" +
 	"\fOrderService\x128\n" +
-	"\fGetOrderByID\x12\x1a.order.GetOrderByIDRequest\x1a\f.order.Order\x12D\n" +
-	"\x11GetOrdersByStatus\x12\x1f.order.GetOrdersByStatusRequest\x1a\f.order.Order0\x01B>Z<github.com/Anacardo89/order_svc_hex/contracts/orders;orderpbb\x06proto3"
+	"\fGetOrderByID\x12\x1a.order.GetOrderByIDRequest\x1a\f.order.Order\x12F\n" +
+	"\x12ListOrdersByStatus\x12 .order.ListOrdersByStatusRequest\x1a\f.order.Order0\x01B>Z<github.com/Anacardo89/order_svc_hex/contracts/orders;orderpbb\x06proto3"
 
 var (
 	file_contracts_orders_order_proto_rawDescOnce sync.Once
@@ -283,23 +283,23 @@ func file_contracts_orders_order_proto_rawDescGZIP() []byte {
 var file_contracts_orders_order_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_contracts_orders_order_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_contracts_orders_order_proto_goTypes = []any{
-	(OrderStatus)(0),                 // 0: order.OrderStatus
-	(*Order)(nil),                    // 1: order.Order
-	(*GetOrderByIDRequest)(nil),      // 2: order.GetOrderByIDRequest
-	(*GetOrdersByStatusRequest)(nil), // 3: order.GetOrdersByStatusRequest
-	nil,                              // 4: order.Order.ItemsEntry
-	(*timestamppb.Timestamp)(nil),    // 5: google.protobuf.Timestamp
+	(OrderStatus)(0),                  // 0: order.OrderStatus
+	(*Order)(nil),                     // 1: order.Order
+	(*GetOrderByIDRequest)(nil),       // 2: order.GetOrderByIDRequest
+	(*ListOrdersByStatusRequest)(nil), // 3: order.ListOrdersByStatusRequest
+	nil,                               // 4: order.Order.ItemsEntry
+	(*timestamppb.Timestamp)(nil),     // 5: google.protobuf.Timestamp
 }
 var file_contracts_orders_order_proto_depIdxs = []int32{
 	4, // 0: order.Order.items:type_name -> order.Order.ItemsEntry
 	0, // 1: order.Order.status:type_name -> order.OrderStatus
 	5, // 2: order.Order.created_at:type_name -> google.protobuf.Timestamp
 	5, // 3: order.Order.updated_at:type_name -> google.protobuf.Timestamp
-	0, // 4: order.GetOrdersByStatusRequest.status:type_name -> order.OrderStatus
+	0, // 4: order.ListOrdersByStatusRequest.status:type_name -> order.OrderStatus
 	2, // 5: order.OrderService.GetOrderByID:input_type -> order.GetOrderByIDRequest
-	3, // 6: order.OrderService.GetOrdersByStatus:input_type -> order.GetOrdersByStatusRequest
+	3, // 6: order.OrderService.ListOrdersByStatus:input_type -> order.ListOrdersByStatusRequest
 	1, // 7: order.OrderService.GetOrderByID:output_type -> order.Order
-	1, // 8: order.OrderService.GetOrdersByStatus:output_type -> order.Order
+	1, // 8: order.OrderService.ListOrdersByStatus:output_type -> order.Order
 	7, // [7:9] is the sub-list for method output_type
 	5, // [5:7] is the sub-list for method input_type
 	5, // [5:5] is the sub-list for extension type_name
