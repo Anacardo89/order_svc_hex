@@ -19,7 +19,7 @@ type Config struct {
 
 type Server struct {
 	Host string `env:"HOST" envDefault:"localhost"`
-	Port string `env:"PORT" envDefault:"8080"`
+	Port string `env:"PORT" envDefault:"50051"`
 }
 
 type DB struct {
@@ -31,11 +31,7 @@ type DB struct {
 }
 
 type Kafka struct {
-	Brokers        string            `env:"KAFKA_BROKER" envDefault:"kafka:9092"`
-	GroupID        string            `yaml:"group_id"`
-	Topics         map[string]string `yaml:"topics"`
-	WorkerPoolSize int               `yaml:"worker_pool_size"`
-	BatchSize      int               `yaml:"batch_size"`
-	BatchTimeout   time.Duration     `yaml:"batch_timeout"`
-	QueueSize      int               `yaml:"queue_size"`
+	Brokers string            `env:"KAFKA_BROKER" envDefault:"kafka:9092"`
+	GroupID string            `yaml:"group_id"`
+	Topics  map[string]string `yaml:"topics"`
 }

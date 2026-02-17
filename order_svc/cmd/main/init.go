@@ -1,14 +1,15 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/config"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/messaging/kafka/orderconsumer"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/out/messaging/kafka/orderdlq"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/out/store/pgx/orderrepo"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/db"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/events"
 )
@@ -26,47 +27,37 @@ func initDB(cfg config.Config) (core.OrderRepo, func(), error) {
 	return orderrepo.NewRepo(dbConn), close, nil
 }
 
-func initEvents(cfg config.Kafka) (ports.OrderConsumer, func(), ports.OrderDLQProducer, func(), *orderconsumer.OrderEventHandler, error) {
+func initMessaging(cfg config.Kafka, repo core.OrderRepo) (*orderconsumer.OrderConsumerClient, func(), error) {
 	conn := events.NewKafkaConnection(cfg.Brokers)
-	allTopics := []string{}
+	dlqTopic, ok := cfg.Topics["OrderDLQ"]
+	if !ok {
+		return nil, nil, errors.New("no topic for OrderDLQ defined")
+	}
+	dlqClient, err := orderdlq.NewDlqClient(conn, dlqTopic)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create DLQ Client: ", err)
+	}
 	consumerTopics := []string{}
-	dlqTopics := make(map[string]*string)
-	rawDLQTopic := ""
-	for k, v := range cfg.Topics {
-		if v.Name == "" {
-			allTopics = append(allTopics, v.DLQ)
-			rawDLQTopic = v.DLQ
-			continue
-		}
-		allTopics = append(allTopics, v.Name)
-		allTopics = append(allTopics, v.DLQ)
-		consumerTopics = append(consumerTopics, v.Name)
-		dlqTopics[k] = &v.DLQ
+	createdTopic, ok := cfg.Topics["OrderCreated"]
+	if !ok {
+		dlqClient.Close()
+		return nil, nil, errors.New("no topic for OrderCreated defined")
+	} else {
+		consumerTopics = append(consumerTopics, createdTopic)
 	}
-	err := events.EnsureTopics(cfg.Brokers, allTopics, 1)
+	updatedTopic, ok := cfg.Topics["OrderStatusUpdated"]
+	if !ok {
+		dlqClient.Close()
+		return nil, nil, errors.New("no topic for OrderStatusUpdated defined")
+	} else {
+		consumerTopics = append(consumerTopics, updatedTopic)
+	}
+	orderHandler := orderconsumer.NewOrderHandler(repo)
+	orderConsumerClient, err := orderconsumer.NewOrderConsumerClient(conn, cfg.GroupID, consumerTopics, orderHandler, dlqClient)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		dlqClient.Close()
+		return nil, nil, fmt.Errorf("failed to create Order Client: ", err)
 	}
-	consumer, err := conn.MakeConsumer(cfg.GroupID, consumerTopics)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	consumer.Poll(100)
-	assigned, err := consumer.Assignment()
-	fmt.Println("Assigned partitions:", assigned)
-	rawProducer, err := conn.MakeProducer()
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	dlqProducer, err := conn.MakeProducer()
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	rawDLQProducer := orderconsumer.NewRawDLQProducer(rawProducer, rawDLQTopic)
-	orderDLQProducer := orderconsumer.NewOrderDLQProducer(dlqProducer, dlqTopics)
-	orderConsumer := orderconsumer.NewOrderConsumer(consumer, rawDLQProducer)
-	consumerHandler := orderconsumer.NewOrderEventHandler(cfg.QueueSize)
-	closeConsumer := func() { rawProducer.Close(); consumer.Close() }
-	closeDLQProducer := func() { dlqProducer.Close() }
-	return orderConsumer, closeConsumer, orderDLQProducer, closeDLQProducer, consumerHandler, nil
+	closeDlq := func() { dlqClient.Close() }
+	return orderConsumerClient, closeDlq, nil
 }

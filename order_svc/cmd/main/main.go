@@ -8,7 +8,6 @@ import (
 	"syscall"
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/config"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/messaging/kafka/orderconsumer"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/rpc/grpc/orderserver"
 )
 
@@ -27,21 +26,13 @@ func main() {
 		os.Exit(1)
 	}
 	defer closeDB()
-	eventConsumer, closeConsumer, dlqProducer, closeDLQProducer, consumerHandler, err := initEvents(cfg.Kafka)
+	orderConsumer, closeDlq, err := initMessaging(cfg.Kafka, dbRepo)
 	if err != nil {
-		slog.Error("failed to init Kafka", "error", err)
+		slog.Error("failed to init messaging", "error", err)
 		os.Exit(1)
 	}
-	defer closeConsumer()
-	defer closeDLQProducer()
-	workerPool := orderconsumer.NewWorkerPool(
-		dbRepo,
-		dlqProducer,
-		consumerHandler,
-		cfg.Kafka.BatchSize,
-		cfg.Kafka.BatchTimeout,
-		cfg.Kafka.WorkerPoolSize,
-	)
+	defer orderConsumer.Close()
+	defer closeDlq()
 	gRPCservice := orderserver.NewOrderGRPCService(dbRepo)
 	gRPCServer, err := orderserver.NewOrderGRPCServer(cfg.Server.Port, gRPCservice)
 	if err != nil {
@@ -54,14 +45,13 @@ func main() {
 	errEventChan := make(chan error, 1)
 	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
 
-	workerPool.Start(ctx)
 	go func() {
 		slog.Info("gRPC server listening on", "address", gRPCServer.Listener.Addr())
 		errSrvChan <- gRPCServer.Server.Serve(gRPCServer.Listener)
 	}()
 	go func() {
 		slog.Info("consumer starting")
-		errEventChan <- eventConsumer.Consume(ctx, consumerHandler)
+		errEventChan <- orderConsumer.Consume(ctx)
 	}()
 
 	select {
