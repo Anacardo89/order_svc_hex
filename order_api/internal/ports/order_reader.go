@@ -8,6 +8,6 @@ import (
 )
 
 type OrderReader interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*core.OrderResp, error)
-	ListByStatus(ctx context.Context, status core.Status) ([]*core.OrderResp, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*core.Order, error)
+	ListByStatus(ctx context.Context, status core.Status) ([]*core.Order, error)
 }

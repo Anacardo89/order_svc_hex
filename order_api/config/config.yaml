@@ -1,0 +1,9 @@
+server:
+  read_timeout:     "5s"
+  write_timeout:    "10s"
+  shutdown_timeout: "15s"
+kafka:
+  group_id: order-service
+  topics:
+    OrderCreated:       orders.created
+    OrderStatusUpdated: orders.status_updated

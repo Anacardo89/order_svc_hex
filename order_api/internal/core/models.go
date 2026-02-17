@@ -6,17 +6,17 @@ import (
 	"github.com/google/uuid"
 )
 
-type CreateOrderReq struct {
+type CreateOrder struct {
 	Items  map[string]int `json:"items" validate:"required"`
 	Status Status         `json:"status"`
 }
 
-type UpdateOrderStatusReq struct {
+type UpdateOrderStatus struct {
 	ID     string `json:"id" validate:"required"`
 	Status Status `json:"status" validate:"required"`
 }
 
-type OrderResp struct {
+type Order struct {
 	ID        uuid.UUID      `json:"id"`
 	Items     map[string]int `json:"items"`
 	Status    Status         `json:"status"`

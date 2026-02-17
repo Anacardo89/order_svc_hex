@@ -32,12 +32,12 @@ func mapStatusToCore(s pb.OrderStatus) core.Status {
 	}
 }
 
-func fromProtoOrder(o *pb.Order) *core.OrderResp {
+func fromProtoOrder(o *pb.Order) *core.Order {
 	items := make(map[string]int, len(o.Items))
 	for k, v := range o.Items {
 		items[k] = int(v)
 	}
-	return &core.OrderResp{
+	return &core.Order{
 		ID:        uuid.MustParse(o.Id),
 		Items:     items,
 		Status:    mapStatusToCore(o.Status),
