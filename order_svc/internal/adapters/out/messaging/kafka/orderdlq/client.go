@@ -1,7 +1,6 @@
 package orderdlq
 
 import (
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/events"
 )
 
@@ -9,7 +8,7 @@ type DlqClient struct {
 	producerDlq *Producer
 }
 
-func NewDlqClient(kc *events.KafkaConnection, topic string) (ports.OrderDLQ, error) {
+func NewDlqClient(kc *events.KafkaConnection, topic string) (*DlqClient, error) {
 	p, err := NewProducer(kc, topic)
 	if err != nil {
 		return nil, err

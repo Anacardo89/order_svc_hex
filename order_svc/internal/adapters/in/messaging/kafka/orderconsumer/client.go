@@ -6,10 +6,9 @@ import (
 )
 
 type OrderConsumerClient struct {
-	orderConsumer  *Consumer
-	handler        ports.OrderConsumer
-	dlqClient      ports.OrderDLQ
-	workerPoolSize int
+	orderConsumer *Consumer
+	handler       ports.OrderConsumer
+	dlqClient     ports.OrderDLQ
 }
 
 func NewOrderConsumerClient(
