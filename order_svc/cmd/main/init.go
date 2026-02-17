@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/config"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/messaging"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/repo"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/messaging/kafka/orderconsumer"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/out/store/pgx/orderrepo"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/db"
@@ -23,10 +23,10 @@ func initDB(cfg config.Config) (core.OrderRepo, func(), error) {
 		return nil, nil, err
 	}
 	close := func() { dbConn.Close() }
-	return repo.NewOrderRepo(dbConn), close, nil
+	return orderrepo.NewRepo(dbConn), close, nil
 }
 
-func initEvents(cfg config.Kafka) (ports.OrderConsumer, func(), ports.OrderDLQProducer, func(), *messaging.OrderEventHandler, error) {
+func initEvents(cfg config.Kafka) (ports.OrderConsumer, func(), ports.OrderDLQProducer, func(), *orderconsumer.OrderEventHandler, error) {
 	conn := events.NewKafkaConnection(cfg.Brokers)
 	allTopics := []string{}
 	consumerTopics := []string{}
@@ -62,10 +62,10 @@ func initEvents(cfg config.Kafka) (ports.OrderConsumer, func(), ports.OrderDLQPr
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
-	rawDLQProducer := messaging.NewRawDLQProducer(rawProducer, rawDLQTopic)
-	orderDLQProducer := messaging.NewOrderDLQProducer(dlqProducer, dlqTopics)
-	orderConsumer := messaging.NewOrderConsumer(consumer, rawDLQProducer)
-	consumerHandler := messaging.NewOrderEventHandler(cfg.QueueSize)
+	rawDLQProducer := orderconsumer.NewRawDLQProducer(rawProducer, rawDLQTopic)
+	orderDLQProducer := orderconsumer.NewOrderDLQProducer(dlqProducer, dlqTopics)
+	orderConsumer := orderconsumer.NewOrderConsumer(consumer, rawDLQProducer)
+	consumerHandler := orderconsumer.NewOrderEventHandler(cfg.QueueSize)
 	closeConsumer := func() { rawProducer.Close(); consumer.Close() }
 	closeDLQProducer := func() { dlqProducer.Close() }
 	return orderConsumer, closeConsumer, orderDLQProducer, closeDLQProducer, consumerHandler, nil

@@ -6,15 +6,9 @@ db:
 kafka:
   group_id: order-service
   topics:
-    OrderTransport:
-      name: 
-      dlq:  orders.transport.dlq
-    OrderCreated:
-      name: orders.created
-      dlq:  orders.created.dlq
-    OrderStatusUpdated:
-      name: orders.status_updated
-      dlq:  orders.status_updated.dlq
+    OrderCreated:       orders.created
+    OrderStatusUpdated: orders.status_updated
+    OrderDLQ:           orders.dlq
   worker_pool_size: 10
   batch_size:       50
   batch_timeout:    "10s"
