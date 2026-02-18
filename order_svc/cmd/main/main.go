@@ -20,12 +20,12 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	dbRepo, closeDB, err := initDB(*cfg)
+	dbRepo, err := initDB(*cfg)
 	if err != nil {
 		slog.Error("failed to init db", "error", err)
 		os.Exit(1)
 	}
-	defer closeDB()
+	defer dbRepo.Close()
 	orderConsumer, closeDlq, err := initMessaging(cfg.Kafka, dbRepo)
 	if err != nil {
 		slog.Error("failed to init messaging", "error", err)

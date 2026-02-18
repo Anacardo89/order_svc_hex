@@ -12,7 +12,7 @@ func New() *Config {
 
 type Config struct {
 	AppHome string `env:"APP_HOME" envDefault:""`
-	Server  Server
+	Server  Server `yaml:"server"`
 	GRPC    GRPC
 	Kafka   Kafka `yaml:"kafka"`
 }

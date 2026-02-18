@@ -1,7 +1,6 @@
 package orderreader
 
 import (
-	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	pb "github.com/Anacardo89/order_svc_hex/order_api/proto/orderpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -12,7 +11,7 @@ type OrderReaderClient struct {
 	conn   *grpc.ClientConn
 }
 
-func NewOrderReaderClient(addr string) (ports.OrderReader, error) {
+func NewOrderReaderClient(addr string) (*OrderReaderClient, error) {
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err

@@ -14,40 +14,48 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/events"
 )
 
-func initDB(cfg config.Config) (core.OrderRepo, func(), error) {
+func initDB(cfg config.Config) (*orderrepo.OrderRepo, error) {
 	dbConn, err := db.Connect(cfg.DB)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	migrationPath := filepath.Join(cfg.AppHome, "db", "migrations")
 	if err := db.Migrate(cfg.DB.DSN, migrationPath, db.MigrateUp); err != nil {
-		return nil, nil, err
+		dbConn.Close()
+		return nil, err
 	}
-	close := func() { dbConn.Close() }
-	return orderrepo.NewRepo(dbConn), close, nil
+	return orderrepo.NewRepo(dbConn), nil
 }
 
 func initMessaging(cfg config.Kafka, repo core.OrderRepo) (*orderconsumer.OrderConsumerClient, func(), error) {
 	conn := events.NewKafkaConnection(cfg.Brokers)
+	allTopics := []string{}
+	for _, v := range cfg.Topics {
+		allTopics = append(allTopics, v)
+	}
+	if err := events.EnsureTopics(cfg.Brokers, allTopics, 1); err != nil {
+		return nil, nil, fmt.Errorf("failed to ensure topics: %s", err)
+	}
 	dlqTopic, ok := cfg.Topics["OrderDLQ"]
 	if !ok {
 		return nil, nil, errors.New("no topic for OrderDLQ defined")
 	}
 	dlqClient, err := orderdlq.NewDlqClient(conn, dlqTopic)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create DLQ Client: ", err)
+		return nil, nil, fmt.Errorf("failed to create DLQ Client: %s", err)
 	}
+	closeDlq := func() { dlqClient.Close() }
 	consumerTopics := []string{}
 	createdTopic, ok := cfg.Topics["OrderCreated"]
 	if !ok {
-		dlqClient.Close()
+		closeDlq()
 		return nil, nil, errors.New("no topic for OrderCreated defined")
 	} else {
 		consumerTopics = append(consumerTopics, createdTopic)
 	}
 	updatedTopic, ok := cfg.Topics["OrderStatusUpdated"]
 	if !ok {
-		dlqClient.Close()
+		closeDlq()
 		return nil, nil, errors.New("no topic for OrderStatusUpdated defined")
 	} else {
 		consumerTopics = append(consumerTopics, updatedTopic)
@@ -55,9 +63,8 @@ func initMessaging(cfg config.Kafka, repo core.OrderRepo) (*orderconsumer.OrderC
 	orderHandler := orderconsumer.NewOrderHandler(repo)
 	orderConsumerClient, err := orderconsumer.NewOrderConsumerClient(conn, cfg.GroupID, consumerTopics, orderHandler, dlqClient)
 	if err != nil {
-		dlqClient.Close()
-		return nil, nil, fmt.Errorf("failed to create Order Client: ", err)
+		closeDlq()
+		return nil, nil, fmt.Errorf("failed to create Order Client: %s", err)
 	}
-	closeDlq := func() { dlqClient.Close() }
 	return orderConsumerClient, closeDlq, nil
 }
