@@ -35,12 +35,12 @@ func (c *OrderConsumerClient) Consume(ctx context.Context) error {
 				continue
 			}
 			switch *msg.TopicPartition.Topic {
-			case "order.created":
+			case "orders.created":
 				if err := c.handler.OnOrderCreated(ctx, *order); err != nil {
 					slog.Error("failed to handle order created", "error", err)
 					fail(msg, "handler_error", err)
 				}
-			case "order.status.updated":
+			case "orders.status_updated":
 				if err := c.handler.OnOrderStatusUpdated(ctx, *order); err != nil {
 					slog.Error("failed to handle order status updated", "error", err)
 					fail(msg, "handler_error", err)

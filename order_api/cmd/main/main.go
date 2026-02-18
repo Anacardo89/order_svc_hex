@@ -24,7 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer orderWriter.Close()
-	orderReader, err := orderreader.NewOrderReaderClient(cfg.GRPC.Port)
+	orderReader, err := orderreader.NewOrderReaderClient(cfg.GRPC)
 	if err != nil {
 		slog.Error("failed to init orderreader", "error", err)
 		os.Exit(1)

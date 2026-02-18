@@ -5,20 +5,19 @@ RUN apt-get update && apt-get install -y librdkafka-dev build-essential && rm -r
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o order_svc ./cmd/main
+RUN go build -o order_api ./cmd/main
 
 
 FROM debian:trixie-slim
-ARG APP_PATH=/opt/order_svc
+ARG APP_PATH=/opt/order_api
 WORKDIR $APP_PATH
 RUN apt-get update && apt-get install -y ca-certificates netcat-openbsd librdkafka1
 RUN rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/order_svc ./
+COPY --from=builder /app/order_api ./
 COPY config/config.yaml ./config/config.yaml
-COPY db/migrations ./db/migrations
 
-ENV GRPC_PORT=50051
+ENV PORT=8080
 
-EXPOSE ${GRPC_PORT}
+EXPOSE ${PORT}
 
-ENTRYPOINT ["./order_svc"]
+ENTRYPOINT ["./order_api"]

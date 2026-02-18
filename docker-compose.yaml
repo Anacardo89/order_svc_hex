@@ -7,22 +7,41 @@ volumes:
   order-svc-kafka-volume:
 
 services:
-  # App
-  order-svc:
+  # order_svc
+  order_svc:
     build:
-      context: .
-    container_name: order-svc
+      context: ./order_svc
+    container_name: order_svc
     depends_on:
       db:
         condition: service_healthy
       kafka:
         condition: service_healthy
     environment:
-      APP_HOME:     ${APP_HOME}
+      APP_HOME:     ${APP_HOME_SVC}
+      CFG_PATH:     ${CFG_PATH}
+      PORT:         ${GRPC_PORT}
+      DB_DSN:       ${DB_DSN}
+      KAFKA_BROKER: ${KAFKA_BROKER}
+    ports:
+      - "${GRPC_PORT}:${GRPC_PORT}"
+    networks:
+      - order-svc-network
+  # order_api
+  order_api:
+    build:
+      context: ./order_api
+    container_name: order_api
+    depends_on:
+      order_svc:
+        condition: service_started
+    environment:
+      APP_HOME:     ${APP_HOME_API}
       CFG_PATH:     ${CFG_PATH}
       HOST:         ${HOST}
       PORT:         ${PORT}
-      DB_DSN:       ${DB_DSN}
+      GRPC_HOST:    ${GRPC_HOST}
+      GRPC_PORT:    ${GRPC_PORT}
       KAFKA_BROKER: ${KAFKA_BROKER}
     ports:
       - "${PORT}:${PORT}"

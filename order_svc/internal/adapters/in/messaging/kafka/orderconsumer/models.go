@@ -30,7 +30,7 @@ type OrderStatusUpdatedEvent struct {
 
 func mapEventPaylodToOrder(msg *kafka.Message) (*core.Order, error) {
 	switch *msg.TopicPartition.Topic {
-	case "order.created":
+	case "orders.created":
 		var e OrderCreatedEvent
 		if err := json.Unmarshal(msg.Value, &e); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal OrderCreated: %w", err)
@@ -44,7 +44,7 @@ func mapEventPaylodToOrder(msg *kafka.Message) (*core.Order, error) {
 			Items:  e.Items,
 			Status: status,
 		}, nil
-	case "order.status_updated":
+	case "orders.status_updated":
 		var e OrderStatusUpdatedEvent
 		if err := json.Unmarshal(msg.Value, &e); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal OrderStatusUpdated: %w", err)
