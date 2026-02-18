@@ -3,7 +3,6 @@ package orderwriter
 import (
 	"fmt"
 
-	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/events"
 )
 
@@ -12,7 +11,7 @@ type OrderWriterClient struct {
 	producerStatusUpdate *Producer
 }
 
-func NewOrderWriterClient(kc *events.KafkaConnection, topics map[string]string) (ports.OrderWriter, error) {
+func NewOrderWriterClient(kc *events.KafkaConnection, topics map[string]string) (*OrderWriterClient, error) {
 	createdTopic, ok := topics[string(TopicOrderCreated)]
 	if !ok {
 		return nil, fmt.Errorf("missing topic: %s", TopicOrderCreated)

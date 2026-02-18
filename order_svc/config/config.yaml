@@ -9,7 +9,3 @@ kafka:
     OrderCreated:       orders.created
     OrderStatusUpdated: orders.status_updated
     OrderDLQ:           orders.dlq
-  worker_pool_size: 10
-  batch_size:       50
-  batch_timeout:    "10s"
-  queue_size:       100
