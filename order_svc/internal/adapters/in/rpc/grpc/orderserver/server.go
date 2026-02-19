@@ -20,7 +20,10 @@ func NewOrderGRPCServer(port string, service ports.OrderServer) (*OrderGRPCServe
 	if err != nil {
 		return nil, err
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(UnaryServerInterceptor()),
+		grpc.StreamInterceptor(StreamServerInterceptor()),
+	)
 	server := &OrderGRPCServer{
 		Server:   s,
 		Listener: listener,

@@ -18,6 +18,8 @@ func NewOrderReaderClient(cfg config.GRPC) (*OrderReaderClient, error) {
 	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(StreamClientInterceptor()),
 	)
 	if err != nil {
 		return nil, err
