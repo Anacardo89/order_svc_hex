@@ -8,11 +8,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/core"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/validator"
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 )
 
 type OrderHandler struct {
@@ -57,6 +58,7 @@ type GetOrderResp struct {
 // GET /orders/{id}
 func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	// Setup
+	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
 
 	// Execution
@@ -67,7 +69,7 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		failHttp(w, http.StatusBadRequest, "invalid path")
 		return
 	}
-	order, err := h.svc.GetOrder(r.Context(), id)
+	order, err := h.svc.GetOrder(ctx, id)
 	if err != nil {
 		slog.Error("failed to get order from order_svc", "error", err)
 		failHttp(w, http.StatusNotFound, "internal error")
@@ -95,7 +97,9 @@ type GetOrdersResp struct {
 // GET /orders
 func (h *OrderHandler) ListOrdersByStatus(w http.ResponseWriter, r *http.Request) {
 	// Setup
+	ctx := r.Context()
 	w.Header().Set("Content-Type", "application/json")
+
 	// Execution
 	statusStr := r.URL.Query().Get("status")
 	if statusStr == "" {
@@ -109,7 +113,7 @@ func (h *OrderHandler) ListOrdersByStatus(w http.ResponseWriter, r *http.Request
 		failHttp(w, http.StatusBadRequest, "status must be either 'pending', 'confirmed' or 'failed'")
 		return
 	}
-	orders, err := h.svc.ListOrdersByStatus(r.Context(), status)
+	orders, err := h.svc.ListOrdersByStatus(ctx, status)
 	if err != nil {
 		slog.Error("failed to get order from order_svc", "error", err)
 		failHttp(w, http.StatusInternalServerError, "internal error")
@@ -132,6 +136,9 @@ func (h *OrderHandler) ListOrdersByStatus(w http.ResponseWriter, r *http.Request
 
 // POST /orders
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	// Setup
+	ctx := r.Context()
+
 	// Execution
 	raw, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -150,7 +157,7 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if err := h.svc.CreateOrder(r.Context(), &reqBody); err != nil {
+	if err := h.svc.CreateOrder(ctx, &reqBody); err != nil {
 		slog.Error("failed to create order", "error", err)
 		failHttp(w, http.StatusInternalServerError, "internal error")
 		return
@@ -164,6 +171,9 @@ type UpdateOrderStatusReq struct {
 
 // PUT /orders/{id}/status
 func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request) {
+	// Setup
+	ctx := r.Context()
+
 	// Execution
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -200,7 +210,7 @@ func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 		ID:     id,
 		Status: *status,
 	}
-	if err := h.svc.UpdateOrderStatus(r.Context(), &req); err != nil {
+	if err := h.svc.UpdateOrderStatus(ctx, &req); err != nil {
 		slog.Error("failed to update order", "error", err)
 		failHttp(w, http.StatusInternalServerError, "internal error")
 		return

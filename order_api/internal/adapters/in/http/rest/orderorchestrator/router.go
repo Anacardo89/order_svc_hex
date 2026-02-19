@@ -4,10 +4,12 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 func NewRouter(h *OrderHandler) http.Handler {
 	r := mux.NewRouter()
+	r.Use(otelmux.Middleware("order_api.rest"))
 	// Health check
 	r.Handle("/", http.HandlerFunc(HealthCheck)).Methods("GET")
 	// Orders

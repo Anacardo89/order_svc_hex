@@ -9,6 +9,7 @@ import (
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/config"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/rpc/grpc/orderserver"
+	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
 )
 
 func main() {
@@ -20,6 +21,16 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	shutdown, err := observability.InitTracer("order_svc")
+	if err != nil {
+		slog.Error("failed to create exporter", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			slog.Error("error shutting down tracer", "error", err)
+		}
+	}()
 	dbRepo, err := initDB(*cfg)
 	if err != nil {
 		slog.Error("failed to init db", "error", err)
@@ -45,6 +56,7 @@ func main() {
 	errEventChan := make(chan error, 1)
 	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
 
+	// Execution
 	go func() {
 		slog.Info("gRPC server listening on", "address", gRPCServer.Listener.Addr())
 		errSrvChan <- gRPCServer.Server.Serve(gRPCServer.Listener)
@@ -54,6 +66,7 @@ func main() {
 		errEventChan <- orderConsumer.Consume(ctx)
 	}()
 
+	// Shutdown
 	select {
 	case sig := <-stopChan:
 		slog.Info("Shutting down gRPC server", "signal", sig)

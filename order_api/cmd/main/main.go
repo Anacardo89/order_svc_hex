@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -9,15 +10,28 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_api/config"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/in/http/rest/orderorchestrator"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/out/rpc/grpc/orderreader"
+	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
 )
 
 func main() {
 	// Setup
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	shutdown, err := observability.InitTracer("order_api")
+	if err != nil {
+		slog.Error("failed to create exporter", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			slog.Error("error shutting down tracer", "error", err)
+		}
+	}()
 	orderWriter, err := initMessaging(cfg.Kafka)
 	if err != nil {
 		slog.Error("failed to init orderwriter", "error", err)
@@ -37,11 +51,13 @@ func main() {
 	errChan := make(chan error, 1)
 	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
 
+	// Execution
 	go func() {
 		slog.Info("server listening on", "address", cfg.Server.Port)
 		errChan <- orderServer.Start()
 	}()
 
+	// Shutdown
 	select {
 	case sig := <-stopChan:
 		slog.Info("Shutting down server", "signal", sig)
