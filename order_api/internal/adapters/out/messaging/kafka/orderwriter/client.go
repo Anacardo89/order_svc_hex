@@ -2,6 +2,7 @@ package orderwriter
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/events"
 )
@@ -35,8 +36,14 @@ func NewOrderWriterClient(kc *events.KafkaConnection, topics map[string]string) 
 }
 
 func (c *OrderWriterClient) Close() {
-	c.producerCreated.producer.Flush(5000)
-	c.producerCreated.producer.Close()
-	c.producerStatusUpdate.producer.Flush(5000)
-	c.producerStatusUpdate.producer.Close()
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		c.producerCreated.producer.Flush(5000)
+		c.producerCreated.producer.Close()
+	})
+	wg.Go(func() {
+		c.producerStatusUpdate.producer.Flush(5000)
+		c.producerStatusUpdate.producer.Close()
+	})
+	wg.Wait()
 }

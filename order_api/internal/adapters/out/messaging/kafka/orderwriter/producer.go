@@ -4,8 +4,13 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/Anacardo89/order_svc_hex/order_api/pkg/events"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Anacardo89/order_svc_hex/order_api/pkg/events"
 )
 
 type Producer struct {
@@ -25,19 +30,34 @@ func NewProducer(kc *events.KafkaConnection, topic string) (*Producer, error) {
 }
 
 func (p *Producer) publish(ctx context.Context, key string, payload any) error {
+	// Observability
+	tracer := otel.Tracer("order_api.kafka")
+	msgCtx, span := tracer.Start(ctx, "kafka.produce",
+		trace.WithAttributes(
+			attribute.String("messaging.system", "kafka"),
+			attribute.String("messaging.destination", p.topic),
+			attribute.String("messaging.operation", "publish"),
+		),
+	)
+	defer span.End()
+
+	// Execution
+	headers := injectTraceHeaders(msgCtx)
 	value, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 	deliveryChan := make(chan kafka.Event, 1)
-	err = p.producer.Produce(&kafka.Message{
+	msg := &kafka.Message{
 		TopicPartition: kafka.TopicPartition{
 			Topic:     &p.topic,
 			Partition: kafka.PartitionAny,
 		},
-		Key:   []byte(key),
-		Value: value,
-	}, deliveryChan)
+		Key:     []byte(key),
+		Value:   value,
+		Headers: headers,
+	}
+	err = p.producer.Produce(msg, deliveryChan)
 	if err != nil {
 		return err
 	}
@@ -51,4 +71,18 @@ func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 		}
 	}
 	return nil
+}
+
+func injectTraceHeaders(ctx context.Context) []kafka.Header {
+	headers := []kafka.Header{}
+	propagator := otel.GetTextMapPropagator()
+	carrier := propagation.MapCarrier{}
+	propagator.Inject(ctx, carrier)
+	for k, v := range carrier {
+		headers = append(headers, kafka.Header{
+			Key:   k,
+			Value: []byte(v),
+		})
+	}
+	return headers
 }
