@@ -10,6 +10,7 @@ import (
 func NewRouter(h *OrderHandler) http.Handler {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("order_api.rest"))
+	r.Use(ReqID)
 	// Health check
 	r.Handle("/", http.HandlerFunc(HealthCheck)).Methods("GET")
 	// Orders

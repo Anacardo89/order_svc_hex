@@ -18,11 +18,13 @@ type Config struct {
 }
 
 type Server struct {
-	Host            string        `env:"HOST" envDefault:"localhost"`
-	Port            string        `env:"PORT" envDefault:"8080"`
-	ReadTimeout     time.Duration `yaml:"read_timeout"`
-	WriteTimeout    time.Duration `yaml:"write_timeout"`
-	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
+	Host              string        `env:"HOST" envDefault:"localhost"`
+	Port              string        `env:"PORT" envDefault:"8080"`
+	ReadTimeout       time.Duration `yaml:"read_timeout"`
+	ReadHeaderTimeout time.Duration `yaml:"read_header_timeout"`
+	WriteTimeout      time.Duration `yaml:"write_timeout"`
+	IdleTimeout       time.Duration `yaml:"idle_timeout"`
+	ShutdownTimeout   time.Duration `yaml:"shutdown_timeout"`
 }
 
 type GRPC struct {

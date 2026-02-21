@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func InitTracer(serviceName string) (func(context.Context) error, error) {
@@ -28,4 +29,13 @@ func InitTracer(serviceName string) (func(context.Context) error, error) {
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 	return tp.Shutdown, nil
+}
+
+func GetTraceSpan(span trace.Span) (string, string) {
+	traceID, spanID := "", ""
+	if span != nil && span.SpanContext().IsValid() {
+		traceID = span.SpanContext().TraceID().String()
+		spanID = span.SpanContext().SpanID().String()
+	}
+	return traceID, spanID
 }

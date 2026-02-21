@@ -62,7 +62,7 @@ func mapEventPaylodToOrder(msg *kafka.Message) (*core.Order, error) {
 	}
 }
 
-func makeDlqMessage(msg *kafka.Message, reason string, err error) ports.DLQMessage {
+func makeDlqMessage(msg *kafka.Message, traceID, spanID string, reason string, err error) ports.DLQMessage {
 	return ports.DLQMessage{
 		Reason:        reason,
 		Error:         err,
@@ -71,5 +71,7 @@ func makeDlqMessage(msg *kafka.Message, reason string, err error) ports.DLQMessa
 		OriginalValue: msg.Value,
 		Partition:     msg.TopicPartition.Partition,
 		Offset:        int64(msg.TopicPartition.Offset),
+		TraceID:       traceID,
+		SpanID:        spanID,
 	}
 }

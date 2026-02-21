@@ -17,6 +17,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      loki:
+        condition: service_started
     environment:
       APP_HOME:     ${APP_HOME_SVC}
       CFG_PATH:     ${CFG_PATH}
@@ -97,3 +99,31 @@ services:
     volumes:
       - ./scripts/create-topics.sh:/docker-entrypoint-initdb.d/create-topics.sh
       - order-svc-kafka-volume:/var/lib/kafka/data
+  # Loki
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    networks:
+      - order-svc-network
+    ports:
+      - "3100:3100"
+    command: >
+      -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - ./loki-index:/tmp/loki/index
+      - ./loki-cache:/tmp/loki/cache
+      - ./loki-chunks:/tmp/loki/chunks
+      - ./loki-compactor:/tmp/loki/compactor
+  #Grafana
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - loki
+    networks:
+      - order-svc-network
