@@ -3,6 +3,7 @@ db:
   min_conns:          2
   max_conn_lifetime:  "10m"
   max_conn_idle_time: "5m"
+
 kafka:
   group_id: order-service
   topics:

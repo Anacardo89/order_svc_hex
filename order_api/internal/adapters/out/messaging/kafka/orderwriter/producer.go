@@ -7,10 +7,13 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/events"
+	"github.com/Anacardo89/order_svc_hex/order_api/pkg/log"
+	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
 )
 
 type Producer struct {
@@ -32,13 +35,14 @@ func NewProducer(kc *events.KafkaConnection, topic string) (*Producer, error) {
 func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 	// Observability
 	tracer := otel.Tracer("order_api.kafka")
-	msgCtx, span := tracer.Start(ctx, "kafka.produce",
+	msgCtx, span := tracer.Start(ctx, "kafka.publish",
 		trace.WithAttributes(
 			attribute.String("messaging.system", "kafka"),
 			attribute.String("messaging.destination", p.topic),
 			attribute.String("messaging.operation", "publish"),
 		),
 	)
+	traceID, spanID := observability.GetTraceSpan(span)
 	defer span.End()
 
 	// Execution
@@ -59,6 +63,9 @@ func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 	}
 	err = p.producer.Produce(msg, deliveryChan)
 	if err != nil {
+		log.Log.Error("failed to publish message", "trace_id", traceID, "span_id", spanID, "error", err)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "publish failed")
 		return err
 	}
 	select {

@@ -11,4 +11,6 @@ type DlqPayload struct {
 	OriginalValue []byte    `json:"original_value"`
 	Partition     int32     `json:"partition,omitempty"`
 	Offset        int64     `json:"offset,omitempty"`
+	TraceID       string    `json:"trace_id"`
+	SpanID        string    `json:"span_id"`
 }

@@ -26,5 +26,5 @@ func (c *DlqClient) PublishDLQ(ctx context.Context, msg ports.DLQMessage) error 
 		Partition:     msg.Partition,
 		Offset:        msg.Offset,
 	}
-	return c.producerDlq.publish(ctx, string(key), payload)
+	return c.producerDlq.publish(ctx, string(key), payload, payload.Reason)
 }

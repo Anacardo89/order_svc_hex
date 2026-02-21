@@ -5,6 +5,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/Anacardo89/order_svc_hex/order_api/pkg/log"
+	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -25,6 +27,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		ctx, span := tracer.Start(ctx, method,
 			trace.WithSpanKind(trace.SpanKindClient),
 		)
+		traceID, spanID := observability.GetTraceSpan(span)
 		defer span.End()
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if !ok {
@@ -35,6 +38,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		if err != nil {
+			log.Log.Error("failed to invoke", "trace_id", traceID, "span_id", spanID, "error", err)
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 		}
@@ -42,7 +46,6 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	}
 }
 
-// Needed for client streams or for per message observability on server streams (needs to wrap stream.Recv)
 func StreamClientInterceptor() grpc.StreamClientInterceptor {
 	tracer := otel.Tracer("order_api.grpc.stream")
 	return func(
@@ -54,6 +57,8 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 		opts ...grpc.CallOption,
 	) (grpc.ClientStream, error) {
 		ctx, span := tracer.Start(ctx, method, trace.WithSpanKind(trace.SpanKindClient))
+		traceID, spanID := observability.GetTraceSpan(span)
+		defer span.End()
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if !ok {
 			md = metadata.New(nil)
@@ -63,6 +68,7 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		cs, err := streamer(ctx, desc, cc, method, opts...)
 		if err != nil {
+			log.Log.Error("failed to stream", "trace_id", traceID, "span_id", spanID, "error", err)
 			span.RecordError(err)
 			span.End()
 			return cs, err
@@ -75,6 +81,7 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 	}
 }
 
+// For context propagation
 type clientStreamWrapper struct {
 	grpc.ClientStream
 	span           trace.Span
@@ -88,6 +95,8 @@ func (w *clientStreamWrapper) RecvMsg(m any) error {
 		return err
 	}
 	if err != nil {
+		traceID, spanID := observability.GetTraceSpan(w.span)
+		log.Log.Error("stream RecvMsg error", "trace_id", traceID, "span_id", spanID, "error", err)
 		w.span.RecordError(err)
 		w.span.End()
 		return err

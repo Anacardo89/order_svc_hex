@@ -12,6 +12,8 @@ type DLQMessage struct {
 	OriginalValue []byte
 	Partition     int32
 	Offset        int64
+	TraceID       string
+	SpanID        string
 }
 
 type OrderDLQ interface {

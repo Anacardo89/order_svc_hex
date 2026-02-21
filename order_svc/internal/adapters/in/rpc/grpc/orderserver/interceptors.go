@@ -2,13 +2,17 @@ package orderserver
 
 import (
 	"context"
+	"io"
 	"strings"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/log"
+	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
@@ -27,8 +31,16 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 			info.FullMethod,
 			trace.WithSpanKind(trace.SpanKindServer),
 		)
+		traceID, spanID := observability.GetTraceSpan(span)
 		defer span.End()
-		return handler(ctx, req)
+		resp, err := handler(ctx, req)
+		if err != nil {
+			log.Log.Error("unary handler error", "trace_id", traceID, "span_id", spanID, "error", err)
+			span.RecordError(err)
+			grpcStatus, _ := status.FromError(err)
+			span.SetStatus(codes.Error, grpcStatus.Message())
+		}
+		return resp, err
 	}
 }
 
@@ -49,10 +61,47 @@ func StreamServerInterceptor() grpc.StreamServerInterceptor {
 			trace.WithSpanKind(trace.SpanKindServer),
 		)
 		defer span.End()
-		wrapped := grpc_middleware.WrapServerStream(ss)
-		wrapped.WrappedContext = ctx
+		wrapped := &serverStreamWrapper{ServerStream: ss, ctx: ctx, span: span}
 		return handler(srv, wrapped)
 	}
+}
+
+// For context propagation
+type serverStreamWrapper struct {
+	grpc.ServerStream
+	ctx  context.Context
+	span trace.Span
+}
+
+func (w *serverStreamWrapper) Context() context.Context {
+	return w.ctx
+}
+
+func (w *serverStreamWrapper) RecvMsg(m any) error {
+	err := w.ServerStream.RecvMsg(m)
+	if err == io.EOF {
+		w.span.End()
+	}
+	if err != nil {
+		traceID, spanID := observability.GetTraceSpan(w.span)
+		log.Log.Error("stream RecvMsg error", "trace_id", traceID, "span_id", spanID, "error", err)
+		w.span.RecordError(err)
+		w.span.SetStatus(codes.Error, err.Error())
+		w.span.End()
+	}
+	return err
+}
+
+func (w *serverStreamWrapper) SendMsg(m any) error {
+	err := w.ServerStream.SendMsg(m)
+	if err != nil {
+		traceID, spanID := observability.GetTraceSpan(w.span)
+		log.Log.Error("stream SendMsg error", "trace_id", traceID, "span_id", spanID, "error", err)
+		w.span.RecordError(err)
+		w.span.SetStatus(codes.Error, err.Error())
+		w.span.End()
+	}
+	return err
 }
 
 // Needed to ensure all lowercase
