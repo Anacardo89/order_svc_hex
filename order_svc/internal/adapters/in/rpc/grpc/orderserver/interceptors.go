@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/log"
-	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -31,11 +31,11 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 			info.FullMethod,
 			trace.WithSpanKind(trace.SpanKindServer),
 		)
-		traceID, spanID := observability.GetTraceSpan(span)
+		log := logger.LogFromSpan(span, logger.BaseLogger)
 		defer span.End()
 		resp, err := handler(ctx, req)
 		if err != nil {
-			log.Log.Error("unary handler error", "trace_id", traceID, "span_id", spanID, "error", err)
+			log.Error(ctx, "unary handler error", ports.Field{Key: "error", Value: err})
 			span.RecordError(err)
 			grpcStatus, _ := status.FromError(err)
 			span.SetStatus(codes.Error, grpcStatus.Message())
@@ -83,8 +83,8 @@ func (w *serverStreamWrapper) RecvMsg(m any) error {
 		w.span.End()
 	}
 	if err != nil {
-		traceID, spanID := observability.GetTraceSpan(w.span)
-		log.Log.Error("stream RecvMsg error", "trace_id", traceID, "span_id", spanID, "error", err)
+		log := logger.LogFromSpan(w.span, logger.BaseLogger)
+		log.Error(w.ctx, "stream RecvMsg error", ports.Field{Key: "error", Value: err})
 		w.span.RecordError(err)
 		w.span.SetStatus(codes.Error, err.Error())
 		w.span.End()
@@ -95,8 +95,8 @@ func (w *serverStreamWrapper) RecvMsg(m any) error {
 func (w *serverStreamWrapper) SendMsg(m any) error {
 	err := w.ServerStream.SendMsg(m)
 	if err != nil {
-		traceID, spanID := observability.GetTraceSpan(w.span)
-		log.Log.Error("stream SendMsg error", "trace_id", traceID, "span_id", spanID, "error", err)
+		log := logger.LogFromSpan(w.span, logger.BaseLogger)
+		log.Error(w.ctx, "stream SendMsg error", ports.Field{Key: "error", Value: err})
 		w.span.RecordError(err)
 		w.span.SetStatus(codes.Error, err.Error())
 		w.span.End()

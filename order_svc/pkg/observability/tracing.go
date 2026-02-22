@@ -23,7 +23,7 @@ func InitTracer(serviceName string) (func(context.Context) error, error) {
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceName("order_svc"),
+			semconv.ServiceName(serviceName),
 		)),
 	)
 	otel.SetTracerProvider(tp)

@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
-	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/log"
-	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -27,7 +27,7 @@ func (r *OrderRepo) Create(ctx context.Context, order *core.Order) error {
 			attribute.String("db.sql.table", "orders"),
 		),
 	)
-	traceID, spanID := observability.GetTraceSpan(span)
+	log := logger.LogFromSpan(span, logger.BaseLogger)
 	defer span.End()
 
 	// Execution
@@ -49,17 +49,13 @@ func (r *OrderRepo) Create(ctx context.Context, order *core.Order) error {
 	}
 	items, err := json.Marshal(dbOrder.Items)
 	if err != nil {
-		log.Log.Error("marshal items failed", "trace_id", traceID, "span_id", spanID, "error", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "marshal items failed")
-		return err
+		log.Error(ctx, "marshal items failed", ports.Field{Key: "error", Value: err})
+		return failExec(span, "marshal items failed", err)
 	}
 	tag, err := r.pool.Exec(ctx, query, dbOrder.ID, items, dbOrder.Status)
 	if err != nil {
-		log.Log.Error("query failed", "trace_id", traceID, "span_id", spanID, "error", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "query failed")
-		return err
+		log.Error(ctx, "query failed", ports.Field{Key: "error", Value: err})
+		return failExec(span, "query failed", err)
 	}
 	span.SetAttributes(attribute.Int64("db.rows_affected", tag.RowsAffected()))
 	return nil
@@ -74,7 +70,7 @@ func (r *OrderRepo) GetByID(ctx context.Context, id uuid.UUID) (*core.Order, err
 			attribute.String("db.sql.table", "orders"),
 		),
 	)
-	traceID, spanID := observability.GetTraceSpan(span)
+	log := logger.LogFromSpan(span, logger.BaseLogger)
 	defer span.End()
 
 	// Execution
@@ -100,16 +96,12 @@ func (r *OrderRepo) GetByID(ctx context.Context, id uuid.UUID) (*core.Order, err
 		&dbOrder.CreatedAt,
 		&dbOrder.UpdatedAt,
 	); err != nil {
-		log.Log.Error("scan failed", "trace_id", traceID, "span_id", spanID, "error", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "scan failed")
-		return nil, err
+		log.Error(ctx, "scan failed", ports.Field{Key: "error", Value: err})
+		return failQueryRow[core.Order](span, "scan failed", err)
 	}
 	if err := json.Unmarshal(items, &dbOrder.Items); err != nil {
-		log.Log.Error("unmarshal items failed", "trace_id", traceID, "span_id", spanID, "error", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "unmarshal items failed")
-		return nil, err
+		log.Error(ctx, "unmarshal items failed", ports.Field{Key: "error", Value: err})
+		return failQueryRow[core.Order](span, "unmarshal items failed", err)
 	}
 	dbOrder.Status = &status
 	return dbOrder.toCore(), nil
@@ -124,7 +116,7 @@ func (r *OrderRepo) ListByStatus(ctx context.Context, status core.Status) ([]*co
 			attribute.String("db.sql.table", "orders"),
 		),
 	)
-	traceID, spanID := observability.GetTraceSpan(span)
+	log := logger.LogFromSpan(span, logger.BaseLogger)
 	defer span.End()
 
 	// Execution
@@ -140,10 +132,8 @@ func (r *OrderRepo) ListByStatus(ctx context.Context, status core.Status) ([]*co
 	;`
 	rows, err := r.pool.Query(ctx, query, status)
 	if err != nil {
-		log.Log.Error("query failed", "trace_id", traceID, "span_id", spanID, "error", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "query failed")
-		return nil, err
+		log.Error(ctx, "query failed", ports.Field{Key: "error", Value: err})
+		return failQuery[core.Order](span, "query failed", err)
 	}
 	defer rows.Close()
 	var (
@@ -162,25 +152,19 @@ func (r *OrderRepo) ListByStatus(ctx context.Context, status core.Status) ([]*co
 			&dbOrder.CreatedAt,
 			&dbOrder.UpdatedAt,
 		); err != nil {
-			log.Log.Error("scan failed", "trace_id", traceID, "span_id", spanID, "error", err)
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "scan failed")
-			return nil, err
+			log.Error(ctx, "scan failed", ports.Field{Key: "error", Value: err})
+			return failQuery[core.Order](span, "scan failed", err)
 		}
 		if err := json.Unmarshal(items, &dbOrder.Items); err != nil {
-			log.Log.Error("unmarshal items failed", "trace_id", traceID, "span_id", spanID, "error", err)
-			span.RecordError(err)
-			span.SetStatus(codes.Error, "unmarshal items failed")
-			return nil, err
+			log.Error(ctx, "unmarshal items failed", ports.Field{Key: "error", Value: err})
+			return failQuery[core.Order](span, "unmarshal items failed", err)
 		}
 		dbOrder.Status = &status
 		orders = append(orders, dbOrder.toCore())
 	}
 	if err := rows.Err(); err != nil {
-		log.Log.Error("rows loop failed", "trace_id", traceID, "span_id", spanID, "error", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "rows loop failed")
-		return nil, err
+		log.Error(ctx, "rows loop failed", ports.Field{Key: "error", Value: err})
+		return failQuery[core.Order](span, "rows loop failed", err)
 	}
 	span.SetAttributes(attribute.Int("db.rows_returned", count))
 	return orders, nil
@@ -195,7 +179,7 @@ func (r *OrderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status core.
 			attribute.String("db.sql.table", "orders"),
 		),
 	)
-	traceID, spanID := observability.GetTraceSpan(span)
+	log := logger.LogFromSpan(span, logger.BaseLogger)
 	defer span.End()
 
 	// Execution
@@ -206,10 +190,8 @@ func (r *OrderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status core.
 	;`
 	tag, err := r.pool.Exec(ctx, query, id, status)
 	if err != nil {
-		log.Log.Error("query failed", "trace_id", traceID, "span_id", spanID, "error", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "query failed")
-		return err
+		log.Error(ctx, "query failed", ports.Field{Key: "error", Value: err})
+		return failExec(span, "query failed", err)
 	}
 	affected := tag.RowsAffected()
 	span.SetAttributes(attribute.Int64("db.rows_affected", affected))

@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/Anacardo89/order_svc_hex/order_api/pkg/log"
-	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
+	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/infra/log/loki/logger"
+	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -24,10 +24,8 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		invoker grpc.UnaryInvoker,
 		opts ...grpc.CallOption,
 	) error {
-		ctx, span := tracer.Start(ctx, method,
-			trace.WithSpanKind(trace.SpanKindClient),
-		)
-		traceID, spanID := observability.GetTraceSpan(span)
+		ctx, span := tracer.Start(ctx, method, trace.WithSpanKind(trace.SpanKindClient))
+		log := logger.LogFromSpan(span, logger.BaseLogger)
 		defer span.End()
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if !ok {
@@ -38,7 +36,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		if err != nil {
-			log.Log.Error("failed to invoke", "trace_id", traceID, "span_id", spanID, "error", err)
+			log.Error(ctx, "failed to invoke", ports.Field{Key: "error", Value: err})
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 		}
@@ -57,7 +55,7 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 		opts ...grpc.CallOption,
 	) (grpc.ClientStream, error) {
 		ctx, span := tracer.Start(ctx, method, trace.WithSpanKind(trace.SpanKindClient))
-		traceID, spanID := observability.GetTraceSpan(span)
+		log := logger.LogFromSpan(span, logger.BaseLogger)
 		defer span.End()
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if !ok {
@@ -68,13 +66,14 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		cs, err := streamer(ctx, desc, cc, method, opts...)
 		if err != nil {
-			log.Log.Error("failed to stream", "trace_id", traceID, "span_id", spanID, "error", err)
+			log.Error(ctx, "failed to stream", ports.Field{Key: "error", Value: err})
 			span.RecordError(err)
 			span.End()
 			return cs, err
 		}
 		return &clientStreamWrapper{
 			ClientStream:   cs,
+			ctx:            ctx,
 			span:           span,
 			isServerStream: desc.ServerStreams,
 		}, nil
@@ -84,6 +83,7 @@ func StreamClientInterceptor() grpc.StreamClientInterceptor {
 // For context propagation
 type clientStreamWrapper struct {
 	grpc.ClientStream
+	ctx            context.Context
 	span           trace.Span
 	isServerStream bool
 }
@@ -95,8 +95,8 @@ func (w *clientStreamWrapper) RecvMsg(m any) error {
 		return err
 	}
 	if err != nil {
-		traceID, spanID := observability.GetTraceSpan(w.span)
-		log.Log.Error("stream RecvMsg error", "trace_id", traceID, "span_id", spanID, "error", err)
+		log := logger.LogFromSpan(w.span, logger.BaseLogger)
+		log.Error(w.ctx, "stream RecvMsg error", ports.Field{Key: "error", Value: err})
 		w.span.RecordError(err)
 		w.span.End()
 		return err

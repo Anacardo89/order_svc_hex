@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/events"
-	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/log"
-	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -41,7 +41,7 @@ func (p *Producer) publish(ctx context.Context, key string, payload any, reason 
 			attribute.String("error.reason", reason),
 		),
 	)
-	traceID, spanID := observability.GetTraceSpan(span)
+	log := logger.LogFromSpan(span, logger.BaseLogger)
 	defer span.End()
 
 	// Execution
@@ -59,7 +59,7 @@ func (p *Producer) publish(ctx context.Context, key string, payload any, reason 
 		Value: value,
 	}, deliveryChan)
 	if err != nil {
-		log.Log.Error("publish dlq failed", "trace_id", traceID, "span_id", spanID, "error", err)
+		log.Error(ctx, "publish dlq failed", ports.Field{Key: "error", Value: err})
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "publish dlq failed")
 		return err

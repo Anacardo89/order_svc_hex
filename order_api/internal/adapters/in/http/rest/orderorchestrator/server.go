@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Anacardo89/order_svc_hex/order_api/config"
-	"github.com/Anacardo89/order_svc_hex/order_api/pkg/log"
 )
 
 type Server struct {
@@ -34,7 +33,6 @@ func NewServer(cfg *config.Server, h *OrderHandler) *Server {
 }
 
 func (s *Server) Start() error {
-	log.Log.Info("Starting server on", "adress", s.addr)
 	return s.httpSrv.ListenAndServe()
 }
 
