@@ -9,7 +9,8 @@ import (
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/config"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/rpc/grpc/orderserver"
-	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/log"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
 )
 
@@ -22,30 +23,28 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	lokiHook := log.NewLokiHook("http://loki:3100", map[string]string{
-		"app": "order_svc",
-		"env": "dev",
+	logger.BaseLogger = logger.NewLogger("http://loki:3100/loki/api/v1/push", map[string]string{
+		"service": "order_svc",
 	})
-	log.Init(lokiHook)
 	shutdown, err := observability.InitTracer("order_svc")
 	if err != nil {
-		log.Log.Error("failed to create exporter", "error", err)
+		logger.BaseLogger.Error(ctx, "failed to create exporter", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	defer func() {
 		if err := shutdown(ctx); err != nil {
-			log.Log.Error("error shutting down tracer", "error", err)
+			logger.BaseLogger.Error(ctx, "error shutting down tracer", ports.Field{Key: "error", Value: err})
 		}
 	}()
 	dbRepo, err := initDB(*cfg)
 	if err != nil {
-		log.Log.Error("failed to init db", "error", err)
+		logger.BaseLogger.Error(ctx, "failed to init db", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	defer dbRepo.Close()
 	orderConsumer, closeDlq, err := initMessaging(cfg.Kafka, dbRepo)
 	if err != nil {
-		log.Log.Error("failed to init messaging", "error", err)
+		logger.BaseLogger.Error(ctx, "failed to init messaging", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	defer orderConsumer.Close()
@@ -53,7 +52,7 @@ func main() {
 	gRPCservice := orderserver.NewOrderGRPCService(dbRepo)
 	gRPCServer, err := orderserver.NewOrderGRPCServer(cfg.Server.Port, gRPCservice)
 	if err != nil {
-		log.Log.Error("failed to create gRPC server", "error", err)
+		logger.BaseLogger.Error(ctx, "failed to create gRPC server", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 
@@ -64,23 +63,23 @@ func main() {
 
 	// Execution
 	go func() {
-		log.Log.Info("gRPC server listening on", "address", gRPCServer.Listener.Addr())
+		logger.BaseLogger.Info(ctx, "gRPC server listening on", ports.Field{Key: "address", Value: gRPCServer.Listener.Addr()})
 		errSrvChan <- gRPCServer.Server.Serve(gRPCServer.Listener)
 	}()
 	go func() {
-		log.Log.Info("consumer starting")
+		logger.BaseLogger.Info(ctx, "consumer starting")
 		errEventChan <- orderConsumer.Consume(ctx)
 	}()
 
 	// Shutdown
 	select {
 	case sig := <-stopChan:
-		log.Log.Info("Shutting down gRPC server", "signal", sig)
+		logger.BaseLogger.Info(ctx, "Shutting down gRPC server", ports.Field{Key: "signal", Value: sig})
 		gRPCServer.Server.GracefulStop()
-		log.Log.Info("Server stopped gracefully")
+		logger.BaseLogger.Info(ctx, "Server stopped gracefully")
 	case err := <-errSrvChan:
-		log.Log.Error("gRPC server error", "error", err)
+		logger.BaseLogger.Error(ctx, "gRPC server error", ports.Field{Key: "error", Value: err})
 	case err := <-errEventChan:
-		log.Log.Error("consumer error", "error", err)
+		logger.BaseLogger.Error(ctx, "consumer error", ports.Field{Key: "error", Value: err})
 	}
 }

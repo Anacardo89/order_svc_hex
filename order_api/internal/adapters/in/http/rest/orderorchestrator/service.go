@@ -13,7 +13,7 @@ type OrderService struct {
 	writer ports.OrderWriter
 }
 
-func NewOrderService(reader ports.OrderReader, writer ports.OrderWriter) core.OrderOrchestrator {
+func NewOrderService(reader ports.OrderReader, writer ports.OrderWriter) *OrderService {
 	return &OrderService{
 		reader: reader,
 		writer: writer,

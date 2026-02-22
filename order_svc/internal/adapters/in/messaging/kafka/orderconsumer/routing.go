@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/log"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel"
@@ -22,7 +23,7 @@ func (c *OrderConsumerClient) Consume(ctx context.Context) error {
 		default:
 			msg, err := c.orderConsumer.consumer.ReadMessage(-1)
 			if err != nil {
-				log.Log.Error("failed to read message", "error", err)
+				logger.BaseLogger.Error(ctx, "failed to read message", ports.Field{Key: "error", Value: err})
 				continue
 			}
 			c.handleMessage(msg)
@@ -38,7 +39,8 @@ func (c *OrderConsumerClient) handleMessage(msg *kafka.Message) {
 		traceID, spanID := observability.GetTraceSpan(span)
 		dlqMsg := makeDlqMessage(msg, traceID, spanID, reason, err)
 		if err := c.dlqClient.PublishDLQ(ctx, dlqMsg); err != nil {
-			log.Log.Error("failed to send to DLQ on error", "error", err, "dlq_msg", dlqMsg)
+			log := logger.LogFromSpan(span, logger.BaseLogger)
+			log.Error(ctx, "failed to send to DLQ on error", ports.Field{Key: "error", Value: err}, ports.Field{Key: "dlq_msg", Value: dlqMsg})
 		}
 	}
 
@@ -53,33 +55,33 @@ func (c *OrderConsumerClient) handleMessage(msg *kafka.Message) {
 			attribute.String("messaging.source", *msg.TopicPartition.Topic),
 		),
 	)
-	traceID, spanID := observability.GetTraceSpan(span)
+	log := logger.LogFromSpan(span, logger.BaseLogger)
 	defer span.End()
 
 	// Execution
 	order, err := mapEventPaylodToOrder(msg)
 	if err != nil {
-		log.Log.Error("failed to unmarshal payload", "trace_id", traceID, "span_id", spanID, "error", err)
+		log.Error(msgCtx, "failed to unmarshal payload", ports.Field{Key: "error", Value: err})
 		fail(msgCtx, span, msg, "unmarshal_failed", err)
 		return
 	}
 	switch *msg.TopicPartition.Topic {
 	case "orders.created":
 		if err := c.handler.OnOrderCreated(msgCtx, *order); err != nil {
-			log.Log.Error("failed to handle order created", "trace_id", traceID, "span_id", spanID, "error", err)
+			log.Error(msgCtx, "failed to handle order created", ports.Field{Key: "error", Value: err})
 			fail(msgCtx, span, msg, "handler_error", err)
 		}
 	case "orders.status_updated":
 		if err := c.handler.OnOrderStatusUpdated(msgCtx, *order); err != nil {
-			log.Log.Error("failed to handle order status updated", "trace_id", traceID, "span_id", spanID, "error", err)
+			log.Error(msgCtx, "failed to handle order status updated", ports.Field{Key: "error", Value: err})
 			fail(msgCtx, span, msg, "handler_error", err)
 		}
 	default:
-		log.Log.Error("message with unknown topic", "trace_id", traceID, "span_id", spanID, "msg", msg)
+		log.Error(msgCtx, "message with unknown topic", ports.Field{Key: "msg", Value: msg})
 		fail(msgCtx, span, msg, "unknown_topic", errors.New("unknown topic"))
 	}
 	if _, err := c.orderConsumer.consumer.CommitMessage(msg); err != nil {
-		log.Log.Error("failed to commit offset", "trace_id", traceID, "span_id", spanID, "error", err)
+		log.Error(msgCtx, "failed to commit offset", ports.Field{Key: "error", Value: err})
 		fail(msgCtx, span, msg, "offset_commit_failed", err)
 	}
 }

@@ -9,8 +9,9 @@ import (
 
 	"github.com/Anacardo89/order_svc_hex/order_api/config"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/in/http/rest/orderorchestrator"
+	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/infra/log/loki/logger"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/out/rpc/grpc/orderreader"
-	"github.com/Anacardo89/order_svc_hex/order_api/pkg/log"
+	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
 )
 
@@ -23,34 +24,34 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	lokiHook := log.NewLokiHook("http://loki:3100", map[string]string{
-		"app": "order_api",
-		"env": "dev",
+	logger.BaseLogger = logger.NewLogger("http://loki:3100/loki/api/v1/push", map[string]string{
+		"service": "order_api",
 	})
-	log.Init(lokiHook)
 	shutdown, err := observability.InitTracer("order_api")
 	if err != nil {
-		log.Log.Error("failed to create exporter", "error", err)
+		logger.BaseLogger.Error(ctx, "failed to create exporter", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	defer func() {
 		if err := shutdown(ctx); err != nil {
-			log.Log.Error("error shutting down tracer", "error", err)
+			logger.BaseLogger.Error(ctx, "error shutting down tracer", ports.Field{Key: "error", Value: err})
 		}
 	}()
 	orderWriter, err := initMessaging(cfg.Kafka)
 	if err != nil {
-		log.Log.Error("failed to init orderwriter", "error", err)
+		logger.BaseLogger.Error(ctx, "failed to init orderwriter", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	defer orderWriter.Close()
+	var ow ports.OrderWriter = orderWriter
 	orderReader, err := orderreader.NewOrderReaderClient(cfg.GRPC)
 	if err != nil {
-		log.Log.Error("failed to init orderreader", "error", err)
+		logger.BaseLogger.Error(ctx, "failed to init orderreader", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	defer orderReader.Close()
-	orderHandler := orderorchestrator.NewOrderHandler(orderReader, orderWriter)
+	var or ports.OrderReader = orderReader
+	orderHandler := orderorchestrator.NewOrderHandler(or, ow)
 	orderServer := orderorchestrator.NewServer(&cfg.Server, orderHandler)
 
 	stopChan := make(chan os.Signal, 1)
@@ -59,17 +60,17 @@ func main() {
 
 	// Execution
 	go func() {
-		log.Log.Info("server listening on", "address", cfg.Server.Port)
+		logger.BaseLogger.Info(ctx, "Starting server on", ports.Field{Key: "port", Value: cfg.Server.Port})
 		errChan <- orderServer.Start()
 	}()
 
 	// Shutdown
 	select {
 	case sig := <-stopChan:
-		log.Log.Info("Shutting down server", "signal", sig)
+		logger.BaseLogger.Info(ctx, "Shutting down server", ports.Field{Key: "signal", Value: sig})
 		orderServer.Shutdown()
-		log.Log.Info("Server stopped gracefully")
+		logger.BaseLogger.Info(ctx, "Server stopped gracefully")
 	case err := <-errChan:
-		log.Log.Error("server error", "error", err)
+		logger.BaseLogger.Error(ctx, "server error", ports.Field{Key: "error", Value: err})
 	}
 }

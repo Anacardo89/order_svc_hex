@@ -11,9 +11,9 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/infra/log/loki/logger"
+	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/events"
-	"github.com/Anacardo89/order_svc_hex/order_api/pkg/log"
-	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
 )
 
 type Producer struct {
@@ -42,7 +42,7 @@ func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 			attribute.String("messaging.operation", "publish"),
 		),
 	)
-	traceID, spanID := observability.GetTraceSpan(span)
+	log := logger.LogFromSpan(span, logger.BaseLogger)
 	defer span.End()
 
 	// Execution
@@ -63,7 +63,7 @@ func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 	}
 	err = p.producer.Produce(msg, deliveryChan)
 	if err != nil {
-		log.Log.Error("failed to publish message", "trace_id", traceID, "span_id", spanID, "error", err)
+		log.Error(msgCtx, "failed to publish message", ports.Field{Key: "error", Value: err})
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "publish failed")
 		return err
