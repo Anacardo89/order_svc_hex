@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 )
 
 var (
@@ -58,6 +59,7 @@ func (r *OrderRepo) Create(ctx context.Context, order *core.Order) error {
 		return failExec(span, "query failed", err)
 	}
 	span.SetAttributes(attribute.Int64("db.rows_affected", tag.RowsAffected()))
+	log.Info(ctx, "order created", ports.Field{Key: "order_id", Value: dbOrder.ID})
 	return nil
 }
 
@@ -198,5 +200,6 @@ func (r *OrderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status core.
 	if affected == 0 {
 		span.SetStatus(codes.Error, "no rows updated")
 	}
+	log.Info(ctx, "order status updated", ports.Field{Key: "order_id", Value: id}, ports.Field{Key: "updated_to", Value: string(status)})
 	return nil
 }
