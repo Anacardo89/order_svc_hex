@@ -26,7 +26,6 @@ func EnsureTopics(brokers string, topics []string, partition int) error {
 		return fmt.Errorf("failed to create Kafka admin client: %w", err)
 	}
 	defer admin.Close()
-
 	var specs []kafka.TopicSpecification
 	for _, topic := range topics {
 		specs = append(specs, kafka.TopicSpecification{
@@ -35,22 +34,18 @@ func EnsureTopics(brokers string, topics []string, partition int) error {
 			ReplicationFactor: 1,
 		})
 	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
 	results, err := admin.CreateTopics(ctx, specs)
 	if err != nil {
 		return fmt.Errorf("failed to create topics: %w", err)
 	}
-
 	for _, res := range results {
 		if res.Error.Code() != kafka.ErrNoError && res.Error.Code() != kafka.ErrTopicAlreadyExists {
 			return fmt.Errorf("failed to create topic %s: %v", res.Topic, res.Error)
 		}
 		fmt.Printf("Topic %s creation result: %v\n", res.Topic, res.Error)
 	}
-
 	return nil
 }
 
