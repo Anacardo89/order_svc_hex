@@ -24,10 +24,10 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	logger.BaseLogger = logger.NewLogger("http://loki:3100/loki/api/v1/push", map[string]string{
+	logger.BaseLogger = logger.NewLogger(cfg.Loki.Endpoint, map[string]string{
 		"service": "order_api",
 	})
-	shutdown, err := observability.InitTracer("order_api")
+	shutdown, err := observability.InitTracer(ctx, "order_api", cfg.Tempo.Endpoint)
 	if err != nil {
 		logger.BaseLogger.Error(ctx, "failed to create exporter", ports.Field{Key: "error", Value: err})
 		os.Exit(1)

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -12,9 +12,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func InitTracer(serviceName string) (func(context.Context) error, error) {
-	exporter, err := stdouttrace.New(
-		stdouttrace.WithPrettyPrint(),
+func InitTracer(ctx context.Context, serviceName, exporterEndpoint string) (func(context.Context) error, error) {
+	exporter, err := otlptracegrpc.New(ctx,
+		otlptracegrpc.WithEndpoint(exporterEndpoint),
+		otlptracegrpc.WithInsecure(),
 	)
 	if err != nil {
 		return nil, err
