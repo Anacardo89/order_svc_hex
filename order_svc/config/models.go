@@ -7,6 +7,8 @@ func New() *Config {
 		Server: Server{},
 		DB:     DB{},
 		Kafka:  Kafka{},
+		Loki:   Loki{},
+		Tempo:  Tempo{},
 	}
 }
 
@@ -15,6 +17,8 @@ type Config struct {
 	Server  Server
 	DB      DB    `yaml:"db"`
 	Kafka   Kafka `yaml:"kafka"`
+	Loki    Loki
+	Tempo   Tempo
 }
 
 type Server struct {
@@ -34,4 +38,12 @@ type Kafka struct {
 	Brokers string            `env:"KAFKA_BROKER" envDefault:"kafka:9092"`
 	GroupID string            `yaml:"group_id"`
 	Topics  map[string]string `yaml:"topics"`
+}
+
+type Loki struct {
+	Endpoint string `env:"LOKI_ENDPOINT" envDefault:"http://loki:3100/loki/api/v1/push"`
+}
+
+type Tempo struct {
+	Endpoint string `env:"TEMPO_ENDPOINT" envDefault:"tempo:4317"`
 }

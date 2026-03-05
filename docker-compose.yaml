@@ -5,6 +5,8 @@ networks:
 volumes:
   order-svc-db-volume:
   order-svc-kafka-volume:
+  order-svc-loki-volume:
+  order-svc-tempo-volume:
 
 services:
   # order_svc
@@ -20,11 +22,13 @@ services:
       loki:
         condition: service_started
     environment:
-      APP_HOME:     ${APP_HOME_SVC}
-      CFG_PATH:     ${CFG_PATH}
-      PORT:         ${GRPC_PORT}
-      DB_DSN:       ${DB_DSN}
-      KAFKA_BROKER: ${KAFKA_BROKER}
+      APP_HOME:       ${APP_HOME_SVC}
+      CFG_PATH:       ${CFG_PATH}
+      PORT:           ${GRPC_PORT}
+      DB_DSN:         ${DB_DSN}
+      KAFKA_BROKER:   ${KAFKA_BROKER}
+      LOKI_ENDPOINT:  ${LOKI_ENDPOINT}
+      TEMPO_ENDPOINT: ${TEMPO_ENDPOINT}
     ports:
       - "${GRPC_PORT}:${GRPC_PORT}"
     networks:
@@ -38,13 +42,15 @@ services:
       order_svc:
         condition: service_started
     environment:
-      APP_HOME:     ${APP_HOME_API}
-      CFG_PATH:     ${CFG_PATH}
-      HOST:         ${HOST}
-      PORT:         ${PORT}
-      GRPC_HOST:    ${GRPC_HOST}
-      GRPC_PORT:    ${GRPC_PORT}
-      KAFKA_BROKER: ${KAFKA_BROKER}
+      APP_HOME:       ${APP_HOME_API}
+      CFG_PATH:       ${CFG_PATH}
+      HOST:           ${HOST}
+      PORT:           ${PORT}
+      GRPC_HOST:      ${GRPC_HOST}
+      GRPC_PORT:      ${GRPC_PORT}
+      KAFKA_BROKER:   ${KAFKA_BROKER}
+      LOKI_ENDPOINT:  ${LOKI_ENDPOINT}
+      TEMPO_ENDPOINT: ${TEMPO_ENDPOINT}
     ports:
       - "${PORT}:${PORT}"
     networks:
@@ -64,10 +70,10 @@ services:
       retries:  10
     ports:
       - "${DB_PORT}:${DB_PORT}"
-    networks:
-      - order-svc-network
     volumes:
       - order-svc-db-volume:/var/lib/postgresql/data
+    networks:
+      - order-svc-network
   # Kafka
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -92,38 +98,55 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks:
-      - order-svc-network
     ports:
       - "9092:9092"
     volumes:
       - ./scripts/create-topics.sh:/docker-entrypoint-initdb.d/create-topics.sh
       - order-svc-kafka-volume:/var/lib/kafka/data
+    networks:
+      - order-svc-network
   # Loki
   loki:
     image: grafana/loki:2.9.0
     container_name: loki
-    networks:
-      - order-svc-network
+    user: "0:0"
+    command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
-    command: >
-      -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml
-      - ./loki-index:/tmp/loki/index
-      - ./loki-cache:/tmp/loki/cache
-      - ./loki-chunks:/tmp/loki/chunks
-      - ./loki-compactor:/tmp/loki/compactor
+      - order-svc-loki-volume:/tmp/loki
+    networks:
+      - order-svc-network
+  # Tempo
+  tempo:
+    image: grafana/tempo:2.4.0
+    container_name: tempo
+    user: "0:0"
+    command: -config.file=/etc/tempo.yaml
+    ports:
+      - "3200:3200" # UI
+      - "4317:4317" # gRPC
+      - "4318:4318" # HTTP
+    volumes:
+      - ./tempo-config.yaml:/etc/tempo.yaml
+      - order-svc-tempo-volume:/var/tempo
+    networks:
+      - order-svc-network
   #Grafana
   grafana:
     image: grafana/grafana:10.3.3
     container_name: grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
       - loki
+      - tempo
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
     networks:
       - order-svc-network
