@@ -6,18 +6,18 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/core"
 )
 
-func (c *OrderWriterClient) PublishCreate(ctx context.Context, req *core.CreateOrder) error {
+func (c *OrderWriterClient) PublishCreate(ctx context.Context, cmd *core.CreateOrderCmd) error {
 	event := OrderCreatedEvent{
-		Items:  req.Items,
-		Status: string(req.Status),
+		Items:  cmd.Items,
+		Status: string(cmd.Status),
 	}
 	return c.producerCreated.publish(ctx, "", event)
 }
 
-func (c *OrderWriterClient) PublishStatusUpdate(ctx context.Context, req *core.UpdateOrderStatus) error {
+func (c *OrderWriterClient) PublishStatusUpdate(ctx context.Context, cmd *core.UpdateOrderStatusCmd) error {
 	event := OrderStatusUpdatedEvent{
-		ID:     req.ID,
-		Status: string(req.Status),
+		ID:     cmd.ID,
+		Status: string(cmd.Status),
 	}
-	return c.producerStatusUpdate.publish(ctx, req.ID, event)
+	return c.producerStatusUpdate.publish(ctx, cmd.ID, event)
 }

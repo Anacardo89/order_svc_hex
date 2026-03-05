@@ -9,13 +9,13 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/messaging/kafka/orderconsumer"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/out/messaging/kafka/orderdlq"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/out/store/pgx/orderrepo"
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/db"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/events"
 )
 
 func initDB(cfg config.Config) (*orderrepo.OrderRepo, error) {
-	dbConn, err := db.Connect(cfg.DB)
+	dbConn, err := db.Connect(cfg.DB.DSN, cfg.DB.MaxConns, cfg.DB.MinConns, cfg.DB.MaxConnLifetime, cfg.DB.MaxConnIdleTime)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func initDB(cfg config.Config) (*orderrepo.OrderRepo, error) {
 	return orderrepo.NewRepo(dbConn), nil
 }
 
-func initMessaging(cfg config.Kafka, repo core.OrderRepo) (*orderconsumer.OrderConsumerClient, func(), error) {
+func initMessaging(cfg config.Kafka, repo ports.OrderRepo) (*orderconsumer.OrderConsumerClient, func(), error) {
 	conn := events.NewKafkaConnection(cfg.Brokers)
 	allTopics := []string{}
 	for _, v := range cfg.Topics {

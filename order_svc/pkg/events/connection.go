@@ -67,7 +67,8 @@ func (c *KafkaConnection) MakeConsumer(groupID string, topics []string) (*kafka.
 
 func (c *KafkaConnection) MakeProducer() (*kafka.Producer, error) {
 	producer, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": c.Brokers,
+		"bootstrap.servers":  c.Brokers,
+		"enable.idempotence": true,
 	})
 	if err != nil {
 		return nil, err
