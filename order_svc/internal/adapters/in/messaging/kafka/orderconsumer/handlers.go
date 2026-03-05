@@ -8,10 +8,10 @@ import (
 )
 
 type OrderHandler struct {
-	repo core.OrderRepo
+	repo ports.OrderRepo
 }
 
-func NewOrderHandler(repo core.OrderRepo) ports.OrderConsumer {
+func NewOrderHandler(repo ports.OrderRepo) ports.OrderConsumer {
 	return &OrderHandler{
 		repo: repo,
 	}

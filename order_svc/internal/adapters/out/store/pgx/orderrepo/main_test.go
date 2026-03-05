@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Anacardo89/order_svc_hex/order_svc/internal/core"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 )
 
 var (
 	dsn      string
 	seedPath string
-	repo     core.OrderRepo
+	repo     ports.OrderRepo
 )
 
 func TestMain(m *testing.M) {

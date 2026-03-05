@@ -5,7 +5,6 @@ import (
 
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/core"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
-	"github.com/google/uuid"
 )
 
 type OrderService struct {
@@ -20,18 +19,18 @@ func NewOrderService(reader ports.OrderReader, writer ports.OrderWriter) *OrderS
 	}
 }
 
-func (s *OrderService) GetOrder(ctx context.Context, id uuid.UUID) (*core.Order, error) {
-	return s.reader.GetByID(ctx, id)
+func (s *OrderService) GetOrder(ctx context.Context, query *core.GetOrderQuery) (*core.Order, error) {
+	return s.reader.GetByID(ctx, query)
 }
 
-func (s *OrderService) ListOrdersByStatus(ctx context.Context, status *core.Status) ([]*core.Order, error) {
-	return s.reader.ListByStatus(ctx, *status)
+func (s *OrderService) ListOrdersByStatus(ctx context.Context, query *core.ListOrdersByStatusQuery) ([]*core.Order, error) {
+	return s.reader.ListByStatus(ctx, query)
 }
 
-func (s *OrderService) CreateOrder(ctx context.Context, req *core.CreateOrder) error {
-	return s.writer.PublishCreate(ctx, req)
+func (s *OrderService) CreateOrder(ctx context.Context, cmd *core.CreateOrderCmd) error {
+	return s.writer.PublishCreate(ctx, cmd)
 }
 
-func (s *OrderService) UpdateOrderStatus(ctx context.Context, req *core.UpdateOrderStatus) error {
-	return s.writer.PublishStatusUpdate(ctx, req)
+func (s *OrderService) UpdateOrderStatus(ctx context.Context, cmd *core.UpdateOrderStatusCmd) error {
+	return s.writer.PublishStatusUpdate(ctx, cmd)
 }

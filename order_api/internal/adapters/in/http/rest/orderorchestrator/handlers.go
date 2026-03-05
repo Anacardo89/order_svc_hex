@@ -18,7 +18,7 @@ import (
 )
 
 type OrderHandler struct {
-	svc core.OrderOrchestrator
+	svc ports.OrderOrchestrator
 }
 
 func NewOrderHandler(reader ports.OrderReader, writer ports.OrderWriter) *OrderHandler {
@@ -71,7 +71,10 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		h.failHttp(w, ctx, http.StatusBadRequest, "invalid path", err)
 		return
 	}
-	order, err := h.svc.GetOrder(ctx, id)
+	query := &core.GetOrderQuery{
+		ID: id,
+	}
+	order, err := h.svc.GetOrder(ctx, query)
 	if err != nil {
 		log.Error(ctx, "failed to get order from order_svc", ports.Field{Key: "error", Value: err})
 		h.failHttp(w, ctx, http.StatusNotFound, "invalid path", err)
@@ -116,7 +119,10 @@ func (h *OrderHandler) ListOrdersByStatus(w http.ResponseWriter, r *http.Request
 		h.failHttp(w, ctx, http.StatusBadRequest, "status must be either 'pending', 'confirmed' or 'failed'", err)
 		return
 	}
-	orders, err := h.svc.ListOrdersByStatus(ctx, status)
+	query := &core.ListOrdersByStatusQuery{
+		Status: *status,
+	}
+	orders, err := h.svc.ListOrdersByStatus(ctx, query)
 	if err != nil {
 		log.Error(ctx, "failed to get order from order_svc", ports.Field{Key: "error", Value: err})
 		h.failHttp(w, ctx, http.StatusInternalServerError, "internal error", err)
@@ -138,6 +144,11 @@ func (h *OrderHandler) ListOrdersByStatus(w http.ResponseWriter, r *http.Request
 }
 
 // POST /orders
+type CreateOrderReq struct {
+	Items  map[string]int `json:"items" validate:"required"`
+	Status string         `json:"status"`
+}
+
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	// Setup
 	ctx := r.Context()
@@ -151,7 +162,7 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		h.failHttp(w, ctx, http.StatusBadRequest, "invalid request body", err)
 		return
 	}
-	var reqBody core.CreateOrder
+	var reqBody CreateOrderReq
 	if err := validator.ParseAndValidate(raw, &reqBody); err != nil {
 		if strings.Contains(err.Error(), "missing fields") {
 			log.Error(ctx, "missing required fields", ports.Field{Key: "error", Value: err})
@@ -162,7 +173,20 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if err := h.svc.CreateOrder(ctx, &reqBody); err != nil {
+	var status *core.Status
+	if reqBody.Status != "" {
+		status, err = core.MapStrToStatus(reqBody.Status)
+		if err != nil {
+			log.Error(ctx, "invalid status", ports.Field{Key: "error", Value: err})
+			h.failHttp(w, ctx, http.StatusBadRequest, "status must be either 'pending', 'confirmed' or 'failed'", err)
+			return
+		}
+	}
+	cmd := &core.CreateOrderCmd{
+		Items:  reqBody.Items,
+		Status: *status,
+	}
+	if err := h.svc.CreateOrder(ctx, cmd); err != nil {
 		log.Error(ctx, "failed to create order", ports.Field{Key: "error", Value: err})
 		h.failHttp(w, ctx, http.StatusInternalServerError, "internal error", err)
 		return
@@ -213,11 +237,11 @@ func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request)
 		h.failHttp(w, ctx, http.StatusBadRequest, "status must be either 'pending', 'confirmed' or 'failed'", err)
 		return
 	}
-	req := core.UpdateOrderStatus{
+	cmd := &core.UpdateOrderStatusCmd{
 		ID:     id,
 		Status: *status,
 	}
-	if err := h.svc.UpdateOrderStatus(ctx, &req); err != nil {
+	if err := h.svc.UpdateOrderStatus(ctx, cmd); err != nil {
 		log.Error(ctx, "failed to update order", ports.Field{Key: "error", Value: err})
 		h.failHttp(w, ctx, http.StatusInternalServerError, "internal error", err)
 		return
