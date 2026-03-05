@@ -1,4 +1,4 @@
-# Order Service (Hexagonal/CQRS)
+# Order Service (Hexagonal/CQRS + Distributed Observability)
 **Status:** Architectural PoC / Being worked on.
 
 [Gist with project analysis](https://gist.github.com/Anacardo89/44471e8ef57e71b11e1c184a6dcfcdb1)
