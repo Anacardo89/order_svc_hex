@@ -15,7 +15,7 @@ import (
 )
 
 func initDB(cfg config.Config) (*orderrepo.OrderRepo, error) {
-	dbConn, err := db.Connect(cfg.DB)
+	dbConn, err := db.Connect(cfg.DB.DSN, cfg.DB.MaxConns, cfg.DB.MinConns, cfg.DB.MaxConnLifetime, cfg.DB.MaxConnIdleTime)
 	if err != nil {
 		return nil, err
 	}

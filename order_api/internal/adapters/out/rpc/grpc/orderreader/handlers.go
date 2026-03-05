@@ -8,16 +8,16 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_api/proto/orderpb"
 )
 
-func (c *OrderReaderClient) GetByID(ctx context.Context, query *core.GetOrderQuery) (*core.Order, error) {
-	resp, err := c.client.GetOrderByID(ctx, &orderpb.GetOrderByIDRequest{Id: query.ID.String()})
+func (c *OrderReaderClient) GetByID(ctx context.Context, qry *core.GetOrderQry) (*core.Order, error) {
+	resp, err := c.client.GetOrderByID(ctx, &orderpb.GetOrderByIDRequest{Id: qry.ID.String()})
 	if err != nil {
 		return nil, err
 	}
 	return fromProtoOrder(resp), nil
 }
 
-func (c *OrderReaderClient) ListByStatus(ctx context.Context, query *core.ListOrdersByStatusQuery) ([]*core.Order, error) {
-	stream, err := c.client.ListOrdersByStatus(ctx, &orderpb.ListOrdersByStatusRequest{Status: mapStatusToProto(query.Status)})
+func (c *OrderReaderClient) ListByStatus(ctx context.Context, qry *core.ListOrdersByStatusQry) ([]*core.Order, error) {
+	stream, err := c.client.ListOrdersByStatus(ctx, &orderpb.ListOrdersByStatusRequest{Status: mapStatusToProto(qry.Status)})
 	if err != nil {
 		return nil, err
 	}

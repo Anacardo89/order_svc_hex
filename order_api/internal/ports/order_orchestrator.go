@@ -7,8 +7,8 @@ import (
 )
 
 type OrderOrchestrator interface {
-	GetOrder(ctx context.Context, query *core.GetOrderQuery) (*core.Order, error)
-	ListOrdersByStatus(ctx context.Context, query *core.ListOrdersByStatusQuery) ([]*core.Order, error)
+	GetOrder(ctx context.Context, qry *core.GetOrderQry) (*core.Order, error)
+	ListOrdersByStatus(ctx context.Context, qry *core.ListOrdersByStatusQry) ([]*core.Order, error)
 	CreateOrder(ctx context.Context, req *core.CreateOrderCmd) error
 	UpdateOrderStatus(ctx context.Context, req *core.UpdateOrderStatusCmd) error
 }

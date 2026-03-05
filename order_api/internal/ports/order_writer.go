@@ -7,6 +7,6 @@ import (
 )
 
 type OrderWriter interface {
-	PublishCreate(ctx context.Context, req *core.CreateOrder) error
-	PublishStatusUpdate(ctx context.Context, req *core.UpdateOrderStatus) error
+	PublishCreate(ctx context.Context, cmd *core.CreateOrderCmd) error
+	PublishStatusUpdate(ctx context.Context, cmd *core.UpdateOrderStatusCmd) error
 }

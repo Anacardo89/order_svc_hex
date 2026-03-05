@@ -7,6 +7,6 @@ import (
 )
 
 type OrderReader interface {
-	GetByID(ctx context.Context, query *core.GetOrderQuery) (*core.Order, error)
-	ListByStatus(ctx context.Context, query *core.ListOrdersByStatusQuery) ([]*core.Order, error)
+	GetByID(ctx context.Context, qry *core.GetOrderQry) (*core.Order, error)
+	ListByStatus(ctx context.Context, qry *core.ListOrdersByStatusQry) ([]*core.Order, error)
 }

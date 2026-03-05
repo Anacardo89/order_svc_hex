@@ -19,12 +19,12 @@ func NewOrderService(reader ports.OrderReader, writer ports.OrderWriter) *OrderS
 	}
 }
 
-func (s *OrderService) GetOrder(ctx context.Context, query *core.GetOrderQuery) (*core.Order, error) {
-	return s.reader.GetByID(ctx, query)
+func (s *OrderService) GetOrder(ctx context.Context, qry *core.GetOrderQry) (*core.Order, error) {
+	return s.reader.GetByID(ctx, qry)
 }
 
-func (s *OrderService) ListOrdersByStatus(ctx context.Context, query *core.ListOrdersByStatusQuery) ([]*core.Order, error) {
-	return s.reader.ListByStatus(ctx, query)
+func (s *OrderService) ListOrdersByStatus(ctx context.Context, qry *core.ListOrdersByStatusQry) ([]*core.Order, error) {
+	return s.reader.ListByStatus(ctx, qry)
 }
 
 func (s *OrderService) CreateOrder(ctx context.Context, cmd *core.CreateOrderCmd) error {

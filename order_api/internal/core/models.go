@@ -26,10 +26,10 @@ type UpdateOrderStatusCmd struct {
 }
 
 // Queries
-type GetOrderQuery struct {
+type GetOrderQry struct {
 	ID uuid.UUID
 }
 
-type ListOrdersByStatusQuery struct {
+type ListOrdersByStatusQry struct {
 	Status Status
 }

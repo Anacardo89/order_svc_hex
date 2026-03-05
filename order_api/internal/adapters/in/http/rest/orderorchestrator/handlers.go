@@ -71,10 +71,10 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request) {
 		h.failHttp(w, ctx, http.StatusBadRequest, "invalid path", err)
 		return
 	}
-	query := &core.GetOrderQuery{
+	qry := &core.GetOrderQry{
 		ID: id,
 	}
-	order, err := h.svc.GetOrder(ctx, query)
+	order, err := h.svc.GetOrder(ctx, qry)
 	if err != nil {
 		log.Error(ctx, "failed to get order from order_svc", ports.Field{Key: "error", Value: err})
 		h.failHttp(w, ctx, http.StatusNotFound, "invalid path", err)
@@ -119,10 +119,10 @@ func (h *OrderHandler) ListOrdersByStatus(w http.ResponseWriter, r *http.Request
 		h.failHttp(w, ctx, http.StatusBadRequest, "status must be either 'pending', 'confirmed' or 'failed'", err)
 		return
 	}
-	query := &core.ListOrdersByStatusQuery{
+	qry := &core.ListOrdersByStatusQry{
 		Status: *status,
 	}
-	orders, err := h.svc.ListOrdersByStatus(ctx, query)
+	orders, err := h.svc.ListOrdersByStatus(ctx, qry)
 	if err != nil {
 		log.Error(ctx, "failed to get order from order_svc", ports.Field{Key: "error", Value: err})
 		h.failHttp(w, ctx, http.StatusInternalServerError, "internal error", err)

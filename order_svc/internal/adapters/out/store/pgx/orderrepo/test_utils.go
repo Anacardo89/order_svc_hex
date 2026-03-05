@@ -5,21 +5,19 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Anacardo89/order_svc_hex/order_svc/config"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/db"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/testutils"
 )
 
 func InitDB(ctx context.Context, dsn string) (ports.OrderRepo, error) {
-	dbCfg := config.DB{
-		DSN:             dsn,
-		MaxConns:        5,
-		MinConns:        1,
-		MaxConnLifetime: 2 * time.Minute,
-		MaxConnIdleTime: 2 * time.Minute,
-	}
-	dbConn, err := db.Connect(dbCfg)
+	var (
+		maxConns        = int32(5)
+		minConns        = int32(1)
+		maxConnLifetime = 2 * time.Minute
+		maxConnIdleTime = 2 * time.Minute
+	)
+	dbConn, err := db.Connect(dsn, maxConns, minConns, maxConnLifetime, maxConnIdleTime)
 	if err != nil {
 		return nil, err
 	}
