@@ -12,9 +12,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func InitTracer(ctx context.Context, serviceName, exporterEndpoint string) (func(context.Context) error, error) {
+func InitTracer(ctx context.Context, serviceName, collectorEndpoint string) (func(context.Context) error, error) {
 	exporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(exporterEndpoint),
+		otlptracegrpc.WithEndpoint(collectorEndpoint),
 		otlptracegrpc.WithInsecure(),
 	)
 	if err != nil {
@@ -29,7 +29,9 @@ func InitTracer(ctx context.Context, serviceName, exporterEndpoint string) (func
 	)
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
-	return tp.Shutdown, nil
+	return func(shutdownCtx context.Context) error {
+		return tp.Shutdown(shutdownCtx)
+	}, nil
 }
 
 func GetTraceSpan(span trace.Span) (string, string) {

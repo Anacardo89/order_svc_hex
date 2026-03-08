@@ -7,8 +7,9 @@ func New() *Config {
 		Server: Server{},
 		DB:     DB{},
 		Kafka:  Kafka{},
-		Loki:   Loki{},
-		Tempo:  Tempo{},
+		Log:    Log{},
+		Trace:  Trace{},
+		Metric: Metric{},
 	}
 }
 
@@ -17,8 +18,9 @@ type Config struct {
 	Server  Server
 	DB      DB    `yaml:"db"`
 	Kafka   Kafka `yaml:"kafka"`
-	Loki    Loki
-	Tempo   Tempo
+	Log     Log
+	Trace   Trace
+	Metric  Metric `yaml:"metric"`
 }
 
 type Server struct {
@@ -40,10 +42,15 @@ type Kafka struct {
 	Topics  map[string]string `yaml:"topics"`
 }
 
-type Loki struct {
+type Log struct {
 	Endpoint string `env:"LOKI_ENDPOINT" envDefault:"http://loki:3100/loki/api/v1/push"`
 }
 
-type Tempo struct {
+type Trace struct {
 	Endpoint string `env:"TEMPO_ENDPOINT" envDefault:"tempo:4317"`
+}
+
+type Metric struct {
+	Endpoint     string        `env:"PROMETHEUS_ENDPOINT" envDefault:"prometheus:4317"`
+	ReaderPeriod time.Duration `yaml:"reader_period"`
 }

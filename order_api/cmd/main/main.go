@@ -24,17 +24,27 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
-	logger.BaseLogger = logger.NewLogger(cfg.Loki.Endpoint, map[string]string{
+	logger.BaseLogger = logger.NewLogger(cfg.Log.Endpoint, map[string]string{
 		"service": "order_api",
 	})
-	shutdown, err := observability.InitTracer(ctx, "order_api", cfg.Tempo.Endpoint)
+	tracerShutdown, err := observability.InitTracer(ctx, "order_api", cfg.Trace.Endpoint)
 	if err != nil {
-		logger.BaseLogger.Error(ctx, "failed to create exporter", ports.Field{Key: "error", Value: err})
+		logger.BaseLogger.Error(ctx, "failed to create tracer", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	defer func() {
-		if err := shutdown(ctx); err != nil {
+		if err := tracerShutdown(ctx); err != nil {
 			logger.BaseLogger.Error(ctx, "error shutting down tracer", ports.Field{Key: "error", Value: err})
+		}
+	}()
+	metricsShutdown, err := observability.InitMetrics(ctx, "order_api", cfg.Metric.Endpoint, cfg.Metric.ReaderPeriod)
+	if err != nil {
+		logger.BaseLogger.Error(ctx, "failed to create metrics", ports.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
+	defer func() {
+		if err := metricsShutdown(ctx); err != nil {
+			logger.BaseLogger.Error(ctx, "error shutting down metrics", ports.Field{Key: "error", Value: err})
 		}
 	}()
 	orderWriter, err := initMessaging(cfg.Kafka)
