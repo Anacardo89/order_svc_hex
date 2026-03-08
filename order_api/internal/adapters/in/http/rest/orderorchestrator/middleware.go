@@ -3,12 +3,17 @@ package orderorchestrator
 import (
 	"context"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/infra/log/loki/logger"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -44,4 +49,67 @@ func Log(baseLogger ports.Logger) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func Metrics(serviceName string) mux.MiddlewareFunc {
+	ctx := context.Background()
+	meter := otel.GetMeterProvider().Meter(serviceName)
+	metrics, err := NewReqMetrics(meter)
+	if err != nil {
+		logger.BaseLogger.Error(ctx, "failer to make request metrics", ports.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			start := time.Now()
+			metrics.active.Add(ctx, 1)
+			defer metrics.active.Add(ctx, -1)
+			rw := newRWInterceptor(w)
+			next.ServeHTTP(rw, r)
+			route := mux.CurrentRoute(r)
+			path, _ := route.GetPathTemplate()
+			if path == "" {
+				path = "unknown"
+			}
+			attrs := metric.WithAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.route", path),
+				attribute.Int("http.status_code", rw.status),
+			)
+			metrics.counter.Add(ctx, 1, attrs)
+			metrics.duration.Record(ctx, time.Since(start).Seconds(), attrs)
+		})
+	}
+}
+
+// To capture status code for metrics
+type RWInterceptor struct {
+	http.ResponseWriter
+	status      int
+	wroteHeader bool
+}
+
+func newRWInterceptor(w http.ResponseWriter) *RWInterceptor {
+	return &RWInterceptor{
+		ResponseWriter: w,
+		status:         http.StatusOK,
+		wroteHeader:    false,
+	}
+}
+
+func (w *RWInterceptor) WriteHeader(status int) {
+	if w.wroteHeader {
+		return
+	}
+	w.status = status
+	w.wroteHeader = true
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *RWInterceptor) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(b)
 }

@@ -10,3 +10,6 @@ kafka:
     OrderCreated:       orders.created
     OrderStatusUpdated: orders.status_updated
     OrderDLQ:           orders.dlq
+
+metric:
+  reader_period: "15s"

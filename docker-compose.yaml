@@ -22,13 +22,14 @@ services:
       loki:
         condition: service_started
     environment:
-      APP_HOME:       ${APP_HOME_SVC}
-      CFG_PATH:       ${CFG_PATH}
-      PORT:           ${GRPC_PORT}
-      DB_DSN:         ${DB_DSN}
-      KAFKA_BROKER:   ${KAFKA_BROKER}
-      LOKI_ENDPOINT:  ${LOKI_ENDPOINT}
-      TEMPO_ENDPOINT: ${TEMPO_ENDPOINT}
+      APP_HOME:            ${APP_HOME_SVC}
+      CFG_PATH:            ${CFG_PATH}
+      PORT:                ${GRPC_PORT}
+      DB_DSN:              ${DB_DSN}
+      KAFKA_BROKER:        ${KAFKA_BROKER}
+      LOKI_ENDPOINT:       ${LOKI_ENDPOINT}
+      TEMPO_ENDPOINT:      ${TEMPO_ENDPOINT}
+      PROMETHEUS_ENDPOINT: ${PROMETHEUS_ENDPOINT}
     ports:
       - "${GRPC_PORT}:${GRPC_PORT}"
     networks:
@@ -42,15 +43,16 @@ services:
       order_svc:
         condition: service_started
     environment:
-      APP_HOME:       ${APP_HOME_API}
-      CFG_PATH:       ${CFG_PATH}
-      HOST:           ${HOST}
-      PORT:           ${PORT}
-      GRPC_HOST:      ${GRPC_HOST}
-      GRPC_PORT:      ${GRPC_PORT}
-      KAFKA_BROKER:   ${KAFKA_BROKER}
-      LOKI_ENDPOINT:  ${LOKI_ENDPOINT}
-      TEMPO_ENDPOINT: ${TEMPO_ENDPOINT}
+      APP_HOME:            ${APP_HOME_API}
+      CFG_PATH:            ${CFG_PATH}
+      HOST:                ${HOST}
+      PORT:                ${PORT}
+      GRPC_HOST:           ${GRPC_HOST}
+      GRPC_PORT:           ${GRPC_PORT}
+      KAFKA_BROKER:        ${KAFKA_BROKER}
+      LOKI_ENDPOINT:       ${LOKI_ENDPOINT}
+      TEMPO_ENDPOINT:      ${TEMPO_ENDPOINT}
+      PROMETHEUS_ENDPOINT: ${PROMETHEUS_ENDPOINT}
     ports:
       - "${PORT}:${PORT}"
     networks:
