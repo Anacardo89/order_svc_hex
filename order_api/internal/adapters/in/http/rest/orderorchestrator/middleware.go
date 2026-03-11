@@ -3,7 +3,6 @@ package orderorchestrator
 import (
 	"context"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/infra/log/loki/logger"
@@ -11,7 +10,6 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
@@ -51,14 +49,7 @@ func Log(baseLogger ports.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-func Metrics(serviceName string) mux.MiddlewareFunc {
-	ctx := context.Background()
-	meter := otel.GetMeterProvider().Meter(serviceName)
-	metrics, err := NewReqMetrics(meter)
-	if err != nil {
-		logger.BaseLogger.Error(ctx, "failer to make request metrics", ports.Field{Key: "error", Value: err})
-		os.Exit(1)
-	}
+func Metrics(metrics *ReqMetrics) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()

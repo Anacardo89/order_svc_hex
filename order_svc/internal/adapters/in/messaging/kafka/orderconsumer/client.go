@@ -17,8 +17,9 @@ func NewOrderConsumerClient(
 	topics []string,
 	handler ports.OrderConsumer,
 	dlqClient ports.OrderDLQ,
+	metrics *ConsumerMetrics,
 ) (*OrderConsumerClient, error) {
-	c, err := NewConsumer(kc, groupId, topics)
+	c, err := NewConsumer(kc, groupId, topics, metrics)
 	if err != nil {
 		return nil, err
 	}

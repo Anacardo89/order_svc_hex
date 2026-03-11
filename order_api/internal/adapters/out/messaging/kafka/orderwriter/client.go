@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/events"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type OrderWriterClient struct {
@@ -12,12 +13,12 @@ type OrderWriterClient struct {
 	producerStatusUpdate *Producer
 }
 
-func NewOrderWriterClient(kc *events.KafkaConnection, topics map[string]string) (*OrderWriterClient, error) {
+func NewOrderWriterClient(kc *events.KafkaConnection, topics map[string]string, meter metric.Meter, m *ProducerMetrics) (*OrderWriterClient, error) {
 	createdTopic, ok := topics[string(TopicOrderCreated)]
 	if !ok {
 		return nil, fmt.Errorf("missing topic: %s", TopicOrderCreated)
 	}
-	pc, err := NewProducer(kc, createdTopic)
+	pc, err := NewProducer(kc, createdTopic, meter, m)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +26,7 @@ func NewOrderWriterClient(kc *events.KafkaConnection, topics map[string]string) 
 	if !ok {
 		return nil, fmt.Errorf("missing topic: %s", TopicOrderStatusUpdated)
 	}
-	ps, err := NewProducer(kc, updatedTopic)
+	ps, err := NewProducer(kc, updatedTopic, meter, m)
 	if err != nil {
 		return nil, err
 	}
@@ -40,10 +41,12 @@ func (c *OrderWriterClient) Close() {
 	wg.Go(func() {
 		c.producerCreated.producer.Flush(5000)
 		c.producerCreated.producer.Close()
+		c.producerCreated.registration.Unregister()
 	})
 	wg.Go(func() {
 		c.producerStatusUpdate.producer.Flush(5000)
 		c.producerStatusUpdate.producer.Close()
+		c.producerStatusUpdate.registration.Unregister()
 	})
 	wg.Wait()
 }

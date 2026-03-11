@@ -10,9 +10,11 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_api/config"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/in/http/rest/orderorchestrator"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/infra/log/loki/logger"
+	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/out/messaging/kafka/orderwriter"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/out/rpc/grpc/orderreader"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
+	"go.opentelemetry.io/otel"
 )
 
 func main() {
@@ -47,7 +49,19 @@ func main() {
 			logger.BaseLogger.Error(ctx, "error shutting down metrics", ports.Field{Key: "error", Value: err})
 		}
 	}()
-	orderWriter, err := initMessaging(cfg.Kafka)
+	restMeter := otel.GetMeterProvider().Meter("order_api.rest")
+	producerMeter := otel.GetMeterProvider().Meter("order_api.producer")
+	restMetrics, err := orderorchestrator.NewReqMetrics(restMeter)
+	if err != nil {
+		logger.BaseLogger.Error(ctx, "failed to init rest metrics", ports.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
+	producerMetrics, err := orderwriter.NewProducerMetrics(producerMeter)
+	if err != nil {
+		logger.BaseLogger.Error(ctx, "failed to init producer metrics", ports.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
+	orderWriter, err := initMessaging(cfg.Kafka, producerMeter, producerMetrics)
 	if err != nil {
 		logger.BaseLogger.Error(ctx, "failed to init orderwriter", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
@@ -62,7 +76,7 @@ func main() {
 	defer orderReader.Close()
 	var or ports.OrderReader = orderReader
 	orderHandler := orderorchestrator.NewOrderHandler(or, ow)
-	orderServer := orderorchestrator.NewServer(&cfg.Server, orderHandler)
+	orderServer := orderorchestrator.NewServer(&cfg.Server, orderHandler, restMetrics)
 
 	stopChan := make(chan os.Signal, 1)
 	errChan := make(chan error, 1)

@@ -3,11 +3,14 @@ package orderwriter
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
@@ -17,23 +20,54 @@ import (
 )
 
 type Producer struct {
-	producer *kafka.Producer
-	topic    string
+	producer     *kafka.Producer
+	metrics      *ProducerMetrics
+	topic        string
+	registration metric.Registration
 }
 
-func NewProducer(kc *events.KafkaConnection, topic string) (*Producer, error) {
+func NewProducer(kc *events.KafkaConnection, topic string, meter metric.Meter, m *ProducerMetrics) (*Producer, error) {
 	p, err := kc.MakeProducer()
 	if err != nil {
 		return nil, err
 	}
-	return &Producer{
+	gauge, err := meter.Int64ObservableGauge("order.producer.queue.depth",
+		metric.WithDescription("Current messages in queue"),
+	)
+	if err != nil {
+		return nil, err
+	}
+	producer := &Producer{
 		producer: p,
+		metrics:  m,
 		topic:    topic,
-	}, nil
+	}
+	reg, err := meter.RegisterCallback(func(ctx context.Context, obs metric.Observer) error {
+		obs.ObserveInt64(gauge, int64(p.Len()), metric.WithAttributes(
+			attribute.String("messaging.destination", producer.topic),
+		))
+		return nil
+	}, gauge)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register gauge callback: %w", err)
+	}
+	producer.registration = reg
+	return producer, nil
 }
 
 func (p *Producer) publish(ctx context.Context, key string, payload any) error {
+	// Error handling
+	fail := func(msg string, span trace.Span, metricAttrs metric.MeasurementOption, err error) {
+		p.metrics.failed.Add(ctx, 1, metricAttrs)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, msg)
+	}
+
 	// Observability
+	start := time.Now()
+	metricAttrs := metric.WithAttributes(
+		attribute.String("messaging.destination", p.topic),
+	)
 	tracer := otel.Tracer("order_api.kafka")
 	msgCtx, span := tracer.Start(ctx, "kafka.publish",
 		trace.WithAttributes(
@@ -49,6 +83,8 @@ func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 	headers := injectTraceHeaders(msgCtx)
 	value, err := json.Marshal(payload)
 	if err != nil {
+		log.Error(msgCtx, "failed to marshal message", ports.Field{Key: "error", Value: err})
+		fail("marshal failed", span, metricAttrs, err)
 		return err
 	}
 	deliveryChan := make(chan kafka.Event, 1)
@@ -64,8 +100,7 @@ func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 	err = p.producer.Produce(msg, deliveryChan)
 	if err != nil {
 		log.Error(msgCtx, "failed to publish message", ports.Field{Key: "error", Value: err})
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "publish failed")
+		fail("publish failed", span, metricAttrs, err)
 		return err
 	}
 	select {
@@ -73,9 +108,14 @@ func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 		return ctx.Err()
 	case e := <-deliveryChan:
 		m := e.(*kafka.Message)
+		elapsed := time.Since(start).Seconds()
+		p.metrics.duration.Record(ctx, elapsed, metricAttrs)
 		if m.TopicPartition.Error != nil {
+			log.Error(msgCtx, "failed to ack publish", ports.Field{Key: "error", Value: m.TopicPartition.Error})
+			fail("publish ack failed", span, metricAttrs, m.TopicPartition.Error)
 			return m.TopicPartition.Error
 		}
+		p.metrics.published.Add(ctx, 1, metricAttrs)
 	}
 	return nil
 }

@@ -8,10 +8,12 @@ import (
 	"syscall"
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/config"
+	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/messaging/kafka/orderconsumer"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/in/rpc/grpc/orderserver"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
+	"go.opentelemetry.io/otel"
 )
 
 func main() {
@@ -36,7 +38,7 @@ func main() {
 			logger.BaseLogger.Error(ctx, "error shutting down tracer", ports.Field{Key: "error", Value: err})
 		}
 	}()
-	metricsShutdown, err := observability.InitMetrics(ctx, "order_api", cfg.Metric.Endpoint, cfg.Metric.ReaderPeriod)
+	metricsShutdown, err := observability.InitMetrics(ctx, "order_svc", cfg.Metric.Endpoint, cfg.Metric.ReaderPeriod)
 	if err != nil {
 		logger.BaseLogger.Error(ctx, "failed to create metrics", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
@@ -46,13 +48,19 @@ func main() {
 			logger.BaseLogger.Error(ctx, "error shutting down metrics", ports.Field{Key: "error", Value: err})
 		}
 	}()
+	consumerMeter := otel.GetMeterProvider().Meter("order_svc.consumer")
+	consumerMetrics, err := orderconsumer.NewConsumerMetrics(consumerMeter)
+	if err != nil {
+		logger.BaseLogger.Error(ctx, "failed to init producer metrics", ports.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
 	dbRepo, err := initDB(*cfg)
 	if err != nil {
 		logger.BaseLogger.Error(ctx, "failed to init db", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	defer dbRepo.Close()
-	orderConsumer, closeDlq, err := initMessaging(cfg.Kafka, dbRepo)
+	orderConsumer, closeDlq, err := initMessaging(cfg.Kafka, dbRepo, consumerMetrics)
 	if err != nil {
 		logger.BaseLogger.Error(ctx, "failed to init messaging", ports.Field{Key: "error", Value: err})
 		os.Exit(1)

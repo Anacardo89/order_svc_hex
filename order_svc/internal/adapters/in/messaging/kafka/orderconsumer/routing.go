@@ -3,6 +3,7 @@ package orderconsumer
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
@@ -11,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -33,7 +35,8 @@ func (c *OrderConsumerClient) Consume(ctx context.Context) error {
 
 func (c *OrderConsumerClient) handleMessage(msg *kafka.Message) {
 	// Error Handling
-	fail := func(ctx context.Context, span trace.Span, msg *kafka.Message, reason string, err error) {
+	fail := func(ctx context.Context, span trace.Span, msg *kafka.Message, reason string, metricAttrs metric.MeasurementOption, err error) {
+		c.orderConsumer.metrics.failed.Add(ctx, 1, metricAttrs, metric.WithAttributes(attribute.String("error.reason", reason)))
 		span.RecordError(err)
 		span.SetStatus(codes.Error, reason)
 		traceID, spanID := observability.GetTraceSpan(span)
@@ -45,6 +48,11 @@ func (c *OrderConsumerClient) handleMessage(msg *kafka.Message) {
 	}
 
 	// Observability
+	start := time.Now()
+	topic := *msg.TopicPartition.Topic
+	metricAttrs := metric.WithAttributes(
+		attribute.String("messaging.source", topic),
+	)
 	msgCtx := extractContextFromKafka(msg)
 	tracer := otel.Tracer("order_svc.kafka")
 	msgCtx, span := tracer.Start(msgCtx, "kafka.consume",
@@ -59,30 +67,35 @@ func (c *OrderConsumerClient) handleMessage(msg *kafka.Message) {
 	defer span.End()
 
 	// Execution
+	var success bool
 	order, err := mapEventPaylodToOrder(msg)
 	if err != nil {
 		log.Error(msgCtx, "failed to unmarshal payload", ports.Field{Key: "error", Value: err})
-		fail(msgCtx, span, msg, "unmarshal_failed", err)
-		return
-	}
-	switch *msg.TopicPartition.Topic {
-	case "orders.created":
-		if err := c.handler.OnOrderCreated(msgCtx, *order); err != nil {
-			log.Error(msgCtx, "failed to handle order created", ports.Field{Key: "error", Value: err})
-			fail(msgCtx, span, msg, "handler_error", err)
+		fail(msgCtx, span, msg, "unmarshal_failed", metricAttrs, err)
+	} else {
+		switch *msg.TopicPartition.Topic {
+		case "orders.created":
+			err = c.handler.OnOrderCreated(msgCtx, *order)
+		case "orders.status_updated":
+			err = c.handler.OnOrderStatusUpdated(msgCtx, *order)
+		default:
+			err = errors.New("unknown topic")
 		}
-	case "orders.status_updated":
-		if err := c.handler.OnOrderStatusUpdated(msgCtx, *order); err != nil {
-			log.Error(msgCtx, "failed to handle order status updated", ports.Field{Key: "error", Value: err})
-			fail(msgCtx, span, msg, "handler_error", err)
+		if err != nil {
+			log.Error(msgCtx, "handler error", ports.Field{Key: "error", Value: err})
+			fail(msgCtx, span, msg, "handler_error", metricAttrs, err)
+		} else {
+			success = true
 		}
-	default:
-		log.Error(msgCtx, "message with unknown topic", ports.Field{Key: "msg", Value: msg})
-		fail(msgCtx, span, msg, "unknown_topic", errors.New("unknown topic"))
 	}
 	if _, err := c.orderConsumer.consumer.CommitMessage(msg); err != nil {
 		log.Error(msgCtx, "failed to commit offset", ports.Field{Key: "error", Value: err})
-		fail(msgCtx, span, msg, "offset_commit_failed", err)
+		fail(msgCtx, span, msg, "offset_commit_failed", metricAttrs, err)
+		return
+	}
+	if success {
+		c.orderConsumer.metrics.duration.Record(msgCtx, time.Since(start).Seconds(), metricAttrs)
+		c.orderConsumer.metrics.consumed.Add(msgCtx, 1, metricAttrs)
 	}
 }
 

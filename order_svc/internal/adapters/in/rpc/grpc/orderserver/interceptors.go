@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
+func UnaryTraceInterceptor() grpc.UnaryServerInterceptor {
 	tracer := otel.Tracer("order_svc.grpc.unary")
 	return func(
 		ctx context.Context,
@@ -44,7 +44,7 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func StreamServerInterceptor() grpc.StreamServerInterceptor {
+func StreamTraceInterceptor() grpc.StreamServerInterceptor {
 	tracer := otel.Tracer("order_svc.grpc.stream")
 	return func(
 		srv any,

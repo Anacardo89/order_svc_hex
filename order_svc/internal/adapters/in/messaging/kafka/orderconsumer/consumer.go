@@ -7,16 +7,18 @@ import (
 
 type Consumer struct {
 	consumer *kafka.Consumer
+	metrics  *ConsumerMetrics
 	topics   []string
 }
 
-func NewConsumer(kc *events.KafkaConnection, groupID string, topics []string) (*Consumer, error) {
+func NewConsumer(kc *events.KafkaConnection, groupID string, topics []string, metrics *ConsumerMetrics) (*Consumer, error) {
 	c, err := kc.MakeConsumer(groupID, topics)
 	if err != nil {
 		return nil, err
 	}
 	return &Consumer{
 		consumer: c,
+		metrics:  metrics,
 		topics:   topics,
 	}, nil
 }

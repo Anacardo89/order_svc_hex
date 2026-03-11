@@ -27,7 +27,7 @@ func initDB(cfg config.Config) (*orderrepo.OrderRepo, error) {
 	return orderrepo.NewRepo(dbConn), nil
 }
 
-func initMessaging(cfg config.Kafka, repo ports.OrderRepo) (*orderconsumer.OrderConsumerClient, func(), error) {
+func initMessaging(cfg config.Kafka, repo ports.OrderRepo, metrics *orderconsumer.ConsumerMetrics) (*orderconsumer.OrderConsumerClient, func(), error) {
 	conn := events.NewKafkaConnection(cfg.Brokers)
 	allTopics := []string{}
 	for _, v := range cfg.Topics {
@@ -61,7 +61,7 @@ func initMessaging(cfg config.Kafka, repo ports.OrderRepo) (*orderconsumer.Order
 		consumerTopics = append(consumerTopics, updatedTopic)
 	}
 	orderHandler := orderconsumer.NewOrderHandler(repo)
-	orderConsumerClient, err := orderconsumer.NewOrderConsumerClient(conn, cfg.GroupID, consumerTopics, orderHandler, dlqClient)
+	orderConsumerClient, err := orderconsumer.NewOrderConsumerClient(conn, cfg.GroupID, consumerTopics, orderHandler, dlqClient, metrics)
 	if err != nil {
 		closeDlq()
 		return nil, nil, fmt.Errorf("failed to create Order Client: %s", err)
