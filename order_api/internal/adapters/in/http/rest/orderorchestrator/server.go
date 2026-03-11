@@ -16,9 +16,9 @@ type Server struct {
 	ShutdownTimeout time.Duration
 }
 
-func NewServer(cfg *config.Server, h *OrderHandler) *Server {
+func NewServer(cfg *config.Server, handler *OrderHandler, metrics *ReqMetrics) *Server {
 	s := &Server{
-		router: NewRouter(h),
+		router: NewRouter(handler, metrics),
 		addr:   fmt.Sprintf(":%s", cfg.Port),
 	}
 	s.httpSrv = &http.Server{

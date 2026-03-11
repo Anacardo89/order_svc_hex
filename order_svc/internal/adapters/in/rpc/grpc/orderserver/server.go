@@ -21,8 +21,8 @@ func NewOrderGRPCServer(port string, service ports.OrderServer) (*OrderGRPCServe
 		return nil, err
 	}
 	s := grpc.NewServer(
-		grpc.UnaryInterceptor(UnaryServerInterceptor()),
-		grpc.StreamInterceptor(StreamServerInterceptor()),
+		grpc.UnaryInterceptor(UnaryTraceInterceptor()),
+		grpc.StreamInterceptor(StreamTraceInterceptor()),
 	)
 	server := &OrderGRPCServer{
 		Server:   s,

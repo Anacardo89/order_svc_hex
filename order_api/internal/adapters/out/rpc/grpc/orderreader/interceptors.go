@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
+func UnaryTraceInterceptor() grpc.UnaryClientInterceptor {
 	tracer := otel.Tracer("order_api.grpc.unary")
 	return func(
 		ctx context.Context,
@@ -44,7 +44,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 	}
 }
 
-func StreamClientInterceptor() grpc.StreamClientInterceptor {
+func StreamTraceInterceptor() grpc.StreamClientInterceptor {
 	tracer := otel.Tracer("order_api.grpc.stream")
 	return func(
 		ctx context.Context,

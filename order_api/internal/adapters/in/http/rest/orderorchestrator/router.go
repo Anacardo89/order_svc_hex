@@ -8,10 +8,10 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
-func NewRouter(h *OrderHandler) http.Handler {
+func NewRouter(h *OrderHandler, metrics *ReqMetrics) http.Handler {
 	r := mux.NewRouter()
 	r.Use(otelmux.Middleware("order_api"))
-	r.Use(Metrics("order_api"))
+	r.Use(Metrics(metrics))
 	r.Use(ReqID)
 	r.Use(Log(logger.BaseLogger))
 	// Health check
