@@ -12,7 +12,7 @@ type grpcMetrics struct {
 	active   metric.Int64UpDownCounter
 }
 
-func NewQryMetrics(meter metric.Meter) (*grpcMetrics, error) {
+func NewgRPCMetrics(meter metric.Meter) (*grpcMetrics, error) {
 	reqs, err := meter.Int64Counter("order.gRPC.request.total",
 		metric.WithDescription("Total number of gRPC requests handled"),
 		metric.WithUnit("{query}"),

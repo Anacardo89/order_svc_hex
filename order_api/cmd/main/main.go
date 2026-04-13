@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +15,7 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/adapters/out/rpc/grpc/orderreader"
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 )
 
@@ -39,16 +41,21 @@ func main() {
 			logger.BaseLogger.Error(ctx, "error shutting down tracer", ports.Field{Key: "error", Value: err})
 		}
 	}()
-	metricsShutdown, err := observability.InitMetrics(ctx, "order_api", cfg.Metric.Endpoint, cfg.Metric.ReaderPeriod)
+	_, err = observability.InitMetrics(ctx, "order_api")
 	if err != nil {
-		logger.BaseLogger.Error(ctx, "failed to create metrics", ports.Field{Key: "error", Value: err})
+		logger.BaseLogger.Error(ctx, "failed to init metrics exporter", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
-	defer func() {
-		if err := metricsShutdown(ctx); err != nil {
-			logger.BaseLogger.Error(ctx, "error shutting down metrics", ports.Field{Key: "error", Value: err})
-		}
-	}()
+	// metricsShutdown, err := observability.InitMetrics(ctx, "order_api", cfg.Metric.Endpoint, cfg.Metric.ReaderPeriod)
+	// if err != nil {
+	// 	logger.BaseLogger.Error(ctx, "failed to create metrics", ports.Field{Key: "error", Value: err})
+	// 	os.Exit(1)
+	// }
+	// defer func() {
+	// 	if err := metricsShutdown(ctx); err != nil {
+	// 		logger.BaseLogger.Error(ctx, "error shutting down metrics", ports.Field{Key: "error", Value: err})
+	// 	}
+	// }()
 	restMeter := otel.GetMeterProvider().Meter("order_api.rest")
 	producerMeter := otel.GetMeterProvider().Meter("order_api.producer")
 	restMetrics, err := orderorchestrator.NewReqMetrics(restMeter)
@@ -86,6 +93,12 @@ func main() {
 	go func() {
 		logger.BaseLogger.Info(ctx, "Starting server on", ports.Field{Key: "port", Value: cfg.Server.Port})
 		errChan <- orderServer.Start()
+	}()
+
+	// Metrics
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":8081", nil)
 	}()
 
 	// Shutdown
