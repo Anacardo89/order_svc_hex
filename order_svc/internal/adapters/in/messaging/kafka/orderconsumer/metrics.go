@@ -7,9 +7,11 @@ import (
 )
 
 type ConsumerMetrics struct {
-	consumed metric.Int64Counter
-	duration metric.Float64Histogram
-	failed   metric.Int64Counter
+	consumed    metric.Int64Counter
+	duration    metric.Float64Histogram
+	failed      metric.Int64Counter
+	dlqProduced metric.Int64Counter
+	dataLoss    metric.Int64Counter
 }
 
 func NewConsumerMetrics(meter metric.Meter) (*ConsumerMetrics, error) {
@@ -34,9 +36,25 @@ func NewConsumerMetrics(meter metric.Meter) (*ConsumerMetrics, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create events failed counter: %w", err)
 	}
+	dlqCounter, err := meter.Int64Counter("order.event.dlq.total",
+		metric.WithDescription("Total number of DLQ publish"),
+		metric.WithUnit("{event}"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DLQ counter: %w", err)
+	}
+	dlqFail, err := meter.Int64Counter("order.event.dlq.fail",
+		metric.WithDescription("Total number of DLQ publish faillures"),
+		metric.WithUnit("{event}"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DLQ fail counter: %w", err)
+	}
 	return &ConsumerMetrics{
-		consumed: cons,
-		duration: dur,
-		failed:   fail,
+		consumed:    cons,
+		duration:    dur,
+		failed:      fail,
+		dlqProduced: dlqCounter,
+		dataLoss:    dlqFail,
 	}, nil
 }

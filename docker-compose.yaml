@@ -7,6 +7,7 @@ volumes:
   order-svc-kafka-volume:
   order-svc-loki-volume:
   order-svc-tempo-volume:
+  order-svc-prometheus-volume:
 
 services:
   # order_svc
@@ -135,7 +136,17 @@ services:
       - order-svc-tempo-volume:/var/tempo
     networks:
       - order-svc-network
-  #Grafana
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus-config.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - order-svc-network
+  # Grafana
   grafana:
     image: grafana/grafana:10.3.3
     container_name: grafana

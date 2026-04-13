@@ -43,7 +43,10 @@ func (c *OrderConsumerClient) handleMessage(msg *kafka.Message) {
 		dlqMsg := makeDlqMessage(msg, traceID, spanID, reason, err)
 		if err := c.dlqClient.PublishDLQ(ctx, dlqMsg); err != nil {
 			log := logger.LogFromSpan(span, logger.BaseLogger)
-			log.Error(ctx, "failed to send to DLQ on error", ports.Field{Key: "error", Value: err}, ports.Field{Key: "dlq_msg", Value: dlqMsg})
+			log.Error(ctx, "CRITICAL - DLQ Publish failed", ports.Field{Key: "error", Value: err}, ports.Field{Key: "dlq_msg", Value: dlqMsg})
+			c.orderConsumer.metrics.dataLoss.Add(ctx, 1, metricAttrs)
+		} else {
+			c.orderConsumer.metrics.dlqProduced.Add(ctx, 1, metricAttrs)
 		}
 	}
 

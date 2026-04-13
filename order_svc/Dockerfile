@@ -1,4 +1,4 @@
-FROM golang:1.25.4-trixie AS builder
+FROM golang:1.26.2-trixie AS builder
 ENV CGO_ENABLED=1
 WORKDIR /app
 RUN apt-get update && apt-get install -y librdkafka-dev build-essential && rm -rf /var/lib/apt/lists/*

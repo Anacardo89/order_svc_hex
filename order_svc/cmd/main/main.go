@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +14,7 @@ import (
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"github.com/Anacardo89/order_svc_hex/order_svc/pkg/observability"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
 )
 
@@ -38,20 +40,31 @@ func main() {
 			logger.BaseLogger.Error(ctx, "error shutting down tracer", ports.Field{Key: "error", Value: err})
 		}
 	}()
-	metricsShutdown, err := observability.InitMetrics(ctx, "order_svc", cfg.Metric.Endpoint, cfg.Metric.ReaderPeriod)
+	_, err = observability.InitMetrics(ctx, "order_svc")
 	if err != nil {
-		logger.BaseLogger.Error(ctx, "failed to create metrics", ports.Field{Key: "error", Value: err})
+		logger.BaseLogger.Error(ctx, "failed to init metrics exporter", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
-	defer func() {
-		if err := metricsShutdown(ctx); err != nil {
-			logger.BaseLogger.Error(ctx, "error shutting down metrics", ports.Field{Key: "error", Value: err})
-		}
-	}()
+	// metricsShutdown, err := observability.InitMetrics(ctx, "order_svc", cfg.Metric.Endpoint, cfg.Metric.ReaderPeriod)
+	// if err != nil {
+	// 	logger.BaseLogger.Error(ctx, "failed to create metrics", ports.Field{Key: "error", Value: err})
+	// 	os.Exit(1)
+	// }
+	// defer func() {
+	// 	if err := metricsShutdown(ctx); err != nil {
+	// 		logger.BaseLogger.Error(ctx, "error shutting down metrics", ports.Field{Key: "error", Value: err})
+	// 	}
+	// }()
 	consumerMeter := otel.GetMeterProvider().Meter("order_svc.consumer")
+	grpcMeter := otel.GetMeterProvider().Meter("order_svc.grpc")
 	consumerMetrics, err := orderconsumer.NewConsumerMetrics(consumerMeter)
 	if err != nil {
 		logger.BaseLogger.Error(ctx, "failed to init producer metrics", ports.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
+	grpcMetrics, err := orderserver.NewgRPCMetrics(grpcMeter)
+	if err != nil {
+		logger.BaseLogger.Error(ctx, "failed to init gRPC metrics", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
 	}
 	dbRepo, err := initDB(*cfg)
@@ -67,8 +80,8 @@ func main() {
 	}
 	defer orderConsumer.Close()
 	defer closeDlq()
-	gRPCservice := orderserver.NewOrderGRPCService(dbRepo)
-	gRPCServer, err := orderserver.NewOrderGRPCServer(cfg.Server.Port, gRPCservice)
+	grpcService := orderserver.NewOrderGRPCService(dbRepo)
+	grpcServer, err := orderserver.NewOrderGRPCServer(cfg.Server.Port, grpcService, grpcMetrics)
 	if err != nil {
 		logger.BaseLogger.Error(ctx, "failed to create gRPC server", ports.Field{Key: "error", Value: err})
 		os.Exit(1)
@@ -81,19 +94,25 @@ func main() {
 
 	// Execution
 	go func() {
-		logger.BaseLogger.Info(ctx, "gRPC server listening on", ports.Field{Key: "address", Value: gRPCServer.Listener.Addr()})
-		errSrvChan <- gRPCServer.Server.Serve(gRPCServer.Listener)
+		logger.BaseLogger.Info(ctx, "gRPC server listening on", ports.Field{Key: "address", Value: grpcServer.Listener.Addr()})
+		errSrvChan <- grpcServer.Server.Serve(grpcServer.Listener)
 	}()
 	go func() {
 		logger.BaseLogger.Info(ctx, "consumer starting")
 		errEventChan <- orderConsumer.Consume(ctx)
 	}()
 
+	// Metrics
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":8082", nil)
+	}()
+
 	// Shutdown
 	select {
 	case sig := <-stopChan:
 		logger.BaseLogger.Info(ctx, "Shutting down gRPC server", ports.Field{Key: "signal", Value: sig})
-		gRPCServer.Server.GracefulStop()
+		grpcServer.Server.GracefulStop()
 		logger.BaseLogger.Info(ctx, "Server stopped gracefully")
 	case err := <-errSrvChan:
 		logger.BaseLogger.Error(ctx, "gRPC server error", ports.Field{Key: "error", Value: err})

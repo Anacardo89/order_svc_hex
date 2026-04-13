@@ -13,21 +13,29 @@ type OrderGRPCServer struct {
 	Server   *grpc.Server
 	Listener net.Listener
 	service  ports.OrderServer
+	metrics  *grpcMetrics
 }
 
-func NewOrderGRPCServer(port string, service ports.OrderServer) (*OrderGRPCServer, error) {
+func NewOrderGRPCServer(port string, service ports.OrderServer, metrics *grpcMetrics) (*OrderGRPCServer, error) {
 	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return nil, err
 	}
 	s := grpc.NewServer(
-		grpc.UnaryInterceptor(UnaryTraceInterceptor()),
-		grpc.StreamInterceptor(StreamTraceInterceptor()),
+		grpc.ChainUnaryInterceptor(
+			UnaryTraceInterceptor(),
+			UnaryMetricsInterceptor(metrics),
+		),
+		grpc.ChainStreamInterceptor(
+			StreamTraceInterceptor(),
+			StreamMetricsInterceptor(metrics),
+		),
 	)
 	server := &OrderGRPCServer{
 		Server:   s,
 		Listener: listener,
 		service:  service,
+		metrics:  metrics,
 	}
 	pb.RegisterOrderServiceServer(s, server)
 	return server, nil

@@ -4,17 +4,21 @@ import (
 	"context"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/adapters/infra/log/loki/logger"
 	"github.com/Anacardo89/order_svc_hex/order_svc/internal/ports"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
+// Tracing
 func UnaryTraceInterceptor() grpc.UnaryServerInterceptor {
 	tracer := otel.Tracer("order_svc.grpc.unary")
 	return func(
@@ -33,6 +37,7 @@ func UnaryTraceInterceptor() grpc.UnaryServerInterceptor {
 		)
 		log := logger.LogFromSpan(span, logger.BaseLogger)
 		defer span.End()
+
 		resp, err := handler(ctx, req)
 		if err != nil {
 			log.Error(ctx, "unary handler error", ports.Field{Key: "error", Value: err})
@@ -40,6 +45,7 @@ func UnaryTraceInterceptor() grpc.UnaryServerInterceptor {
 			grpcStatus, _ := status.FromError(err)
 			span.SetStatus(codes.Error, grpcStatus.Message())
 		}
+
 		return resp, err
 	}
 }
@@ -128,4 +134,57 @@ func (c metadataCarrier) Keys() []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// Metrics
+func UnaryMetricsInterceptor(m *grpcMetrics) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req any,
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (any, error) {
+		start := time.Now()
+		m.active.Add(ctx, 1)
+		defer m.active.Add(ctx, -1)
+
+		resp, err := handler(ctx, req)
+
+		st, _ := status.FromError(err)
+		metricAttrs := metric.WithAttributes(
+			attribute.String("rpc.system", "grpc"),
+			attribute.String("rpc.method", info.FullMethod),
+			attribute.String("rpc.grpc.status_code", st.Code().String()),
+		)
+		m.duration.Record(ctx, time.Since(start).Seconds(), metricAttrs)
+		m.requests.Add(ctx, 1, metricAttrs)
+		return resp, err
+	}
+}
+
+func StreamMetricsInterceptor(m *grpcMetrics) grpc.StreamServerInterceptor {
+	return func(
+		srv any,
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		start := time.Now()
+		ctx := ss.Context()
+		m.active.Add(ctx, 1)
+		defer m.active.Add(ctx, -1)
+
+		err := handler(srv, ss)
+
+		st, _ := status.FromError(err)
+		metricAttrs := metric.WithAttributes(
+			attribute.String("rpc.system", "grpc"),
+			attribute.String("rpc.method", info.FullMethod),
+			attribute.String("rpc.grpc.status_code", st.Code().String()),
+			attribute.Bool("rpc.is_streaming", true),
+		)
+		m.duration.Record(ctx, time.Since(start).Seconds(), metricAttrs)
+		m.requests.Add(ctx, 1, metricAttrs)
+		return err
+	}
 }
