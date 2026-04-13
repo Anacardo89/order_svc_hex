@@ -76,7 +76,7 @@ func (p *Producer) publish(ctx context.Context, key string, payload any) error {
 			attribute.String("messaging.operation", "publish"),
 		),
 	)
-	log := logger.LogFromSpan(span, logger.BaseLogger)
+	log := logger.BaseLogger
 	defer span.End()
 
 	// Execution

@@ -35,7 +35,7 @@ func UnaryTraceInterceptor() grpc.UnaryServerInterceptor {
 			info.FullMethod,
 			trace.WithSpanKind(trace.SpanKindServer),
 		)
-		log := logger.LogFromSpan(span, logger.BaseLogger)
+		log := logger.BaseLogger
 		defer span.End()
 
 		resp, err := handler(ctx, req)
@@ -89,7 +89,7 @@ func (w *serverStreamWrapper) RecvMsg(m any) error {
 		w.span.End()
 	}
 	if err != nil {
-		log := logger.LogFromSpan(w.span, logger.BaseLogger)
+		log := logger.BaseLogger
 		log.Error(w.ctx, "stream RecvMsg error", ports.Field{Key: "error", Value: err})
 		w.span.RecordError(err)
 		w.span.SetStatus(codes.Error, err.Error())
@@ -101,7 +101,7 @@ func (w *serverStreamWrapper) RecvMsg(m any) error {
 func (w *serverStreamWrapper) SendMsg(m any) error {
 	err := w.ServerStream.SendMsg(m)
 	if err != nil {
-		log := logger.LogFromSpan(w.span, logger.BaseLogger)
+		log := logger.BaseLogger
 		log.Error(w.ctx, "stream SendMsg error", ports.Field{Key: "error", Value: err})
 		w.span.RecordError(err)
 		w.span.SetStatus(codes.Error, err.Error())

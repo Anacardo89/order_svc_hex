@@ -41,7 +41,7 @@ func (p *Producer) publish(ctx context.Context, key string, payload any, reason 
 			attribute.String("error.reason", reason),
 		),
 	)
-	log := logger.LogFromSpan(span, logger.BaseLogger)
+	log := logger.BaseLogger
 	defer span.End()
 
 	// Execution

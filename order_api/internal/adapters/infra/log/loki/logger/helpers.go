@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/Anacardo89/order_svc_hex/order_api/internal/ports"
-	"github.com/Anacardo89/order_svc_hex/order_api/pkg/observability"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type CtxKey string
@@ -21,12 +19,4 @@ func LogFromCtx(ctx context.Context, defaultLogger ports.Logger) ports.Logger {
 		return defaultLogger
 	}
 	return l
-}
-
-func LogFromSpan(span trace.Span, defaultLogger ports.Logger) ports.Logger {
-	traceID, spanID := observability.GetTraceSpan(span)
-	return defaultLogger.With(
-		ports.Field{Key: "trace_id", Value: traceID},
-		ports.Field{Key: "span_id", Value: spanID},
-	)
 }

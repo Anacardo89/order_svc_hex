@@ -42,7 +42,7 @@ func (c *OrderConsumerClient) handleMessage(msg *kafka.Message) {
 		traceID, spanID := observability.GetTraceSpan(span)
 		dlqMsg := makeDlqMessage(msg, traceID, spanID, reason, err)
 		if err := c.dlqClient.PublishDLQ(ctx, dlqMsg); err != nil {
-			log := logger.LogFromSpan(span, logger.BaseLogger)
+			log := logger.BaseLogger
 			log.Error(ctx, "CRITICAL - DLQ Publish failed", ports.Field{Key: "error", Value: err}, ports.Field{Key: "dlq_msg", Value: dlqMsg})
 			c.orderConsumer.metrics.dataLoss.Add(ctx, 1, metricAttrs)
 		} else {
@@ -66,7 +66,7 @@ func (c *OrderConsumerClient) handleMessage(msg *kafka.Message) {
 			attribute.String("messaging.source", *msg.TopicPartition.Topic),
 		),
 	)
-	log := logger.LogFromSpan(span, logger.BaseLogger)
+	log := logger.BaseLogger
 	defer span.End()
 
 	// Execution
