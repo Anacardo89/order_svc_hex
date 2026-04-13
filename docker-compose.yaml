@@ -104,7 +104,6 @@ services:
     ports:
       - "9092:9092"
     volumes:
-      - ./scripts/create-topics.sh:/docker-entrypoint-initdb.d/create-topics.sh
       - order-svc-kafka-volume:/var/lib/kafka/data
     networks:
       - order-svc-network
@@ -117,7 +116,7 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - ./configs/loki-config.yaml:/etc/loki/local-config.yaml
       - order-svc-loki-volume:/tmp/loki
     networks:
       - order-svc-network
@@ -132,7 +131,7 @@ services:
       - "4317:4317" # gRPC
       - "4318:4318" # HTTP
     volumes:
-      - ./tempo-config.yaml:/etc/tempo.yaml
+      - ./configs/tempo-config.yaml:/etc/tempo.yaml
       - order-svc-tempo-volume:/var/tempo
     networks:
       - order-svc-network
@@ -141,7 +140,7 @@ services:
     image: prom/prometheus:v2.49.1
     container_name: prometheus
     volumes:
-      - ./prometheus-config.yaml:/etc/prometheus/prometheus.yml
+      - ./configs/prometheus-config.yaml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
     networks:
