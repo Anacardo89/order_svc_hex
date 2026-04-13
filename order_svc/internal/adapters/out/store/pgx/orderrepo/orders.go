@@ -28,7 +28,7 @@ func (r *OrderRepo) Create(ctx context.Context, order *core.Order) error {
 			attribute.String("db.sql.table", "orders"),
 		),
 	)
-	log := logger.LogFromSpan(span, logger.BaseLogger)
+	log := logger.BaseLogger
 	defer span.End()
 
 	// Execution
@@ -72,7 +72,7 @@ func (r *OrderRepo) GetByID(ctx context.Context, id uuid.UUID) (*core.Order, err
 			attribute.String("db.sql.table", "orders"),
 		),
 	)
-	log := logger.LogFromSpan(span, logger.BaseLogger)
+	log := logger.BaseLogger
 	defer span.End()
 
 	// Execution
@@ -118,7 +118,7 @@ func (r *OrderRepo) ListByStatus(ctx context.Context, status core.Status) ([]*co
 			attribute.String("db.sql.table", "orders"),
 		),
 	)
-	log := logger.LogFromSpan(span, logger.BaseLogger)
+	log := logger.BaseLogger
 	defer span.End()
 
 	// Execution
@@ -181,7 +181,7 @@ func (r *OrderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status core.
 			attribute.String("db.sql.table", "orders"),
 		),
 	)
-	log := logger.LogFromSpan(span, logger.BaseLogger)
+	log := logger.BaseLogger
 	defer span.End()
 
 	// Execution

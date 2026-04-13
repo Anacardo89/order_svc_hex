@@ -15,10 +15,11 @@ type Logger struct {
 }
 
 func NewLogger(endpoint string, labels map[string]string) *Logger {
-	handler := slog.NewJSONHandler(os.Stdout, nil)
-	lokiHandler := NewLokiHandler(handler, endpoint, labels)
-	slogLogger := slog.New(lokiHandler)
-	return &Logger{slogLogger: slogLogger}
+	consoleH := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	lokiH := NewLokiHandler(endpoint, labels)
+	return &Logger{
+		slogLogger: slog.New(slog.NewMultiHandler(consoleH, lokiH)),
+	}
 }
 
 func (l *Logger) With(fields ...ports.Field) ports.Logger {
