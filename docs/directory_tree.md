@@ -2,19 +2,28 @@
 
 ```bash
 .
+├── configs
+│   ├── grafana
+│   │   └── provisioning
+│   │       └── datasources
+│   │           └── ds.yaml
+│   ├── loki-config.yaml
+│   ├── prometheus-config.yaml
+│   └── tempo-config.yaml
 ├── contracts
 │   └── orders
 │       └── order.proto
-├── docker-compose.yaml
+├── deployments
+│   ├── docker
+│   │   ├── docker-compose.yaml
+│   │   └── sample.env
+│   └── k8s
+│       ├── kind-config.yaml
+│       └── Makefile
 ├── docs
 │   ├── directory_tree.md
 │   ├── project_blueprint.md
 │   └── tech_stack.md
-├── grafana
-│   └── provisioning
-│       └── datasources
-│           └── ds.yaml
-├── loki-config.yaml
 ├── order_api
 │   ├── cmd
 │   │   └── main
@@ -35,6 +44,7 @@
 │   │   │   │           └── orderorchestrator
 │   │   │   │               ├── errors.go
 │   │   │   │               ├── handlers.go
+│   │   │   │               ├── metrics.go
 │   │   │   │               ├── middleware.go
 │   │   │   │               ├── router.go
 │   │   │   │               ├── server.go
@@ -52,6 +62,7 @@
 │   │   │       │       └── orderwriter
 │   │   │       │           ├── client.go
 │   │   │       │           ├── handlers.go
+│   │   │       │           ├── metrics.go
 │   │   │       │           ├── models.go
 │   │   │       │           └── producer.go
 │   │   │       └── rpc
@@ -73,6 +84,7 @@
 │   │   ├── events
 │   │   │   └── connection.go
 │   │   ├── observability
+│   │   │   ├── metrics.go
 │   │   │   └── tracing.go
 │   │   ├── ptr
 │   │   │   └── ptr.go
@@ -117,12 +129,14 @@
 │   │   │   │   │           ├── client.go
 │   │   │   │   │           ├── consumer.go
 │   │   │   │   │           ├── handlers.go
+│   │   │   │   │           ├── metrics.go
 │   │   │   │   │           ├── models.go
 │   │   │   │   │           └── routing.go
 │   │   │   │   └── rpc
 │   │   │   │       └── grpc
 │   │   │   │           └── orderserver
 │   │   │   │               ├── interceptors.go
+│   │   │   │               ├── metrics.go
 │   │   │   │               ├── models.go
 │   │   │   │               ├── server.go
 │   │   │   │               ├── server_handlers.go
@@ -132,7 +146,6 @@
 │   │   │   │   └── log
 │   │   │   │       └── loki
 │   │   │   │           └── logger
-│   │   │   │               ├── helpers.go
 │   │   │   │               ├── logger.go
 │   │   │   │               └── logger_handler.go
 │   │   │   └── out
@@ -168,6 +181,7 @@
 │   │   ├── events
 │   │   │   └── connection.go
 │   │   ├── observability
+│   │   │   ├── metrics.go
 │   │   │   └── tracing.go
 │   │   ├── ptr
 │   │   │   └── ptr.go
@@ -179,7 +193,5 @@
 │           ├── order_grpc.pb.go
 │           └── order.pb.go
 ├── README.md
-├── sample.env
-├── tempo-config.yaml
 └── trace.jpg
 ```
