@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-svc-service
+  namespace: order-system
+spec:
+  selector:
+    app: order-svc
+  ports:
+    - name: grpc
+      protocol: TCP
+      port: 50051
+      targetPort: 50051
+  type: ClusterIP

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-svc-deployment
+  namespace: order-system
+  labels:
+    app: order-svc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-svc
+  template:
+    metadata:
+      labels:
+        app: order-svc
+    spec:
+      containers:
+      - name: order-svc
+        image: order-svc:latest 
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 50051
+        envFrom:
+        - secretRef:
+            name: order-svc-secrets
+        volumeMounts:
+        - name: config-volume
+          mountPath: /opt/order_svc/config/
+          readOnly: true
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+      volumes:
+      - name: config-volume
+        configMap:
+          name: order-svc-config

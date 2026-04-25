@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-svc-config
+  namespace: order-system
+data:
+  config.yaml: |
+    db:
+      max_conns:          10
+      min_conns:          2
+      max_conn_lifetime:  "10m"
+      max_conn_idle_time: "5m"
+    kafka:
+      group_id: order-service
+      topics:
+        OrderCreated:       orders.created
+        OrderStatusUpdated: orders.status_updated
+        OrderDLQ:           orders.dlq
+    metric:
+      reader_period: "15s"
