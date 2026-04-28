@@ -8,8 +8,10 @@
 - **Architecture:** Hexagonal (Ports & Adapters) to decouple core logic from Kafka/gRPC.
 - **CQRS:** Write-side via Kafka events; Read-side via gRPC.
 - **Observability:** Distributed tracing propagated across service boundaries (Kafka headers + gRPC interceptors). 
-- **Stack:** Go, gRPC, Kafka, Loki/Tempo.
+- **Stack:** Go, gRPC, Kafka, Loki/Tempo/Prometheus.
+- **Deployment:** Deploy in docker with 2 commands inside /deployments/docker `cp sample.env .env` and `docker compose up -d`
 
 ### Todo
-- Implement metrics/ wire up Mimir
-- Make Graphana Dashboards
+- Currently handling Kubernetes deployment
+- Implement OTel collector to funnel al observability into
+
