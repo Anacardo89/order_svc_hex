@@ -12,6 +12,13 @@ cluster-up:
 		echo "🔌 Installing Calico CNI..."; \
 		kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$(CALICO_VERSION)/manifests/tigera-operator.yaml; \
 		kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$(CALICO_VERSION)/manifests/custom-resources.yaml; \
+		echo "🔌 Installing Ingress NginX..."; \
+		kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml; \
+		echo "⏳ Waiting for Ingress NGINX to be ready..."; \
+		kubectl wait --namespace ingress-nginx \
+		--for=condition=ready pod \
+		--selector=app.kubernetes.io/component=controller \
+		--timeout=90s; \
 		echo "⏳ Waiting for nodes to be Ready..."; \
 		kubectl wait --for=condition=Ready nodes --all --timeout=300s; \
 		echo "✅ Cluster is ready!"; \

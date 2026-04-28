@@ -5,6 +5,7 @@ metadata:
   namespace: order-system
   labels:
     app: order-svc
+    part-of: order-system
 spec:
   replicas: 1
   selector:
@@ -14,6 +15,7 @@ spec:
     metadata:
       labels:
         app: order-svc
+        part-of: order-system
     spec:
       containers:
       - name: order-svc
