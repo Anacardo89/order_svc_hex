@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: order-svc-service
   namespace: order-system
+  labels:
+    part-of: order-system
 spec:
   selector:
     app: order-svc
@@ -11,4 +13,7 @@ spec:
       protocol: TCP
       port: 50051
       targetPort: 50051
+    - name: metrics
+      port: 8082
+      targetPort: 8082
   type: ClusterIP

@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   name: order-system
   labels:
-    name: order-system
+    part-of: order-system
