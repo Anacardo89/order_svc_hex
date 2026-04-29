@@ -1,7 +1,7 @@
 CALICO_VERSION := v3.27.3
 CLUSTER_NAME := order-system-cluster
 
-.PHONY: cluster-up cluster-down gen-secrets init-envs
+.PHONY: cluster-up cluster-down load-imgs gen-secrets
 
 cluster-up:
 	@if [ "$$(kind get clusters | grep -w $(CLUSTER_NAME))" = "$(CLUSTER_NAME)" ]; then \
@@ -29,7 +29,25 @@ cluster-down:
 	@kind delete cluster --name $(CLUSTER_NAME)
 	@echo "✨ All nodes, networking, and Calico components have been removed."
 
+load-imgs:
+	@echo "🚀 Building container images..."
+	@docker build -t order-api:local -f ../../order_api/Dockerfile ../../order_api
+	@docker build -t order-svc:local -f ../../order_svc/Dockerfile ../../order_svc
+	@echo "✅ Images built successfully!"
+	@echo "🔌 Loading images into kind cluster: $(CLUSTER_NAME)..."
+	@kind load docker-image order-api:local --name $(CLUSTER_NAME)
+	@kind load docker-image order-svc:local --name $(CLUSTER_NAME)
+	@echo "✅ Images loaded successfully!"
+
 gen-secrets:
+	@echo "📂 Initializing .env files from samples..."
+	@for sample in $$(find . -name "sample.env"); do \
+		target="$${sample%/*}/.env"; \
+		[ -f "$$target" ] && { echo "  ⚠️ Skipping $$target"; continue; }; \
+		echo "  -> Creating $$target"; \
+		cp "$$sample" "$$target"; \
+	done
+	@echo "✅ Environment files initialized."
 	@echo "🔐 Deep-scanning for secret templates..."
 	@for template in $$(find . -name "secret.yaml.tmpl"); do \
 		dir=$$(dirname $$template); \
@@ -45,17 +63,3 @@ gen-secrets:
 		fi \
 	done
 	@echo "✅ Secret generation complete."
-
-init-envs:
-	@echo "📂 Initializing .env files from samples..."
-	@for sample in $$(find . -name "sample.env"); do \
-		dir=$$(dirname $$sample); \
-		target="$$dir/.env"; \
-		if [ ! -f "$$target" ]; then \
-			echo "  -> Creating $$target from sample..."; \
-			cp "$$sample" "$$target"; \
-		else \
-			echo "  ⚠️  Skipping $$dir: .env already exists."; \
-		fi \
-	done
-	@echo "✅ Environment files initialized."

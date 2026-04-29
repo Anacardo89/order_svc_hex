@@ -33,6 +33,8 @@ services:
       PROMETHEUS_ENDPOINT: ${PROMETHEUS_ENDPOINT}
     ports:
       - "${GRPC_PORT}:${GRPC_PORT}"
+    volumes:
+      - ../../configs/order-svc-config.yaml:/opt/order_svc/config/config.yaml
     networks:
       - order-svc-network
   # order_api
@@ -56,6 +58,8 @@ services:
       PROMETHEUS_ENDPOINT: ${PROMETHEUS_ENDPOINT}
     ports:
       - "${PORT}:${PORT}"
+    volumes:
+      - ../../configs/order-api-config.yaml:/opt/order_api/config/config.yaml
     networks:
       - order-svc-network
   # DB

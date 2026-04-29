@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
       - name: order-api
-        image: order-api:latest 
-        imagePullPolicy: IfNotPresent
+        image: order-api:local 
+        imagePullPolicy: Never
         ports:
         - containerPort: 8080
         envFrom:
