@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
       - name: order-svc
-        image: order-svc:latest 
-        imagePullPolicy: IfNotPresent
+        image: order-svc:local 
+        imagePullPolicy: Never
         ports:
         - containerPort: 50051
         envFrom:
