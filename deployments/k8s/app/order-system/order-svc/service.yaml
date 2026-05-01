@@ -1,16 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: order-svc-service
-  namespace: order-system
-  labels:
-    part-of: order-system
+  name: order-svc
 spec:
   selector:
-    app: order-svc
+    app.kubernetes.io/name: order-svc
   ports:
     - name: grpc
-      protocol: TCP
       port: 50051
       targetPort: 50051
     - name: metrics

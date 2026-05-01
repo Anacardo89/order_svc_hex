@@ -1,10 +1,27 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+commonLabels:
+  app.kubernetes.io/name: order-api
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+
 configMapGenerator:
 - name: order-api-config
-  namespace: order-system
-  labels:
-    part-of: order-system
   files:
     - config.yaml
+- name: order-api-env
+  literals:
+    - APP_HOME=$(APP_HOME_API)
+    - CFG_PATH=$(CFG_PATH)
+    - HOST=$(HOST)
+    - PORT=$(PORT)
+    - GRPC_HOST=$(GRPC_HOST)
+    - GRPC_PORT=$(GRPC_PORT)
+    - KAFKA_BROKER=$(KAFKA_BROKER)
+    - LOKI_ENDPOINT=$(LOKI_ENDPOINT)
+    - TEMPO_ENDPOINT=$(TEMPO_ENDPOINT)
+    - PROMETHEUS_ENDPOINT=$(PROMETHEUS_ENDPOINT)
