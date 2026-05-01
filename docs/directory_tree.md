@@ -8,6 +8,8 @@
 │   │       └── datasources
 │   │           └── ds.yaml
 │   ├── loki-config.yaml
+│   ├── order-api-config.yaml
+│   ├── order-svc-config.yaml
 │   ├── prometheus-config.yaml
 │   └── tempo-config.yaml
 ├── contracts
@@ -18,6 +20,23 @@
 │   │   ├── docker-compose.yaml
 │   │   └── sample.env
 │   └── k8s
+│       ├── app
+│       │   ├── 00-namespace.yaml
+│       │   └── order-system
+│       │       ├── network-policy.yaml
+│       │       ├── order-api
+│       │       │   ├── deployment.yaml
+│       │       │   ├── ingress.yaml
+│       │       │   ├── kustomization.yaml
+│       │       │   ├── sample.env
+│       │       │   ├── secrets.yaml.tmpl
+│       │       │   └── service.yaml
+│       │       └── order-svc
+│       │           ├── deployment.yaml
+│       │           ├── kustomization.yaml
+│       │           ├── sample.env
+│       │           ├── secrets.yaml.tmpl
+│       │           └── service.yaml
 │       ├── kind-config.yaml
 │       └── Makefile
 ├── docs
@@ -31,7 +50,6 @@
 │   │       └── main.go
 │   ├── config
 │   │   ├── config.go
-│   │   ├── config.yaml
 │   │   └── models.go
 │   ├── Dockerfile
 │   ├── go.mod
@@ -103,7 +121,6 @@
 │   │       └── main.go
 │   ├── config
 │   │   ├── config.go
-│   │   ├── config.yaml
 │   │   └── models.go
 │   ├── db
 │   │   ├── migrations

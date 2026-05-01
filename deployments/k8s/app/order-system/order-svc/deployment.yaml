@@ -1,21 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: order-svc-deployment
-  namespace: order-system
-  labels:
-    app: order-svc
-    part-of: order-system
+  name: order-svc
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: order-svc
+      app.kubernetes.io/name: order-svc
   template:
     metadata:
-      labels:
-        app: order-svc
-        part-of: order-system
     spec:
       containers:
       - name: order-svc
@@ -24,6 +17,8 @@ spec:
         ports:
         - containerPort: 50051
         envFrom:
+        - configMapRef:
+            name: order-svc-env
         - secretRef:
             name: order-svc-secrets
         volumeMounts:
@@ -31,12 +26,12 @@ spec:
           mountPath: /opt/order_svc/config/
           readOnly: true
         resources:
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "1Gi"
       volumes:
       - name: config-volume
         configMap:

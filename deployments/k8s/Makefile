@@ -1,7 +1,8 @@
 CALICO_VERSION := v3.27.3
 CLUSTER_NAME := order-system-cluster
+NAMESPACE := order-system
 
-.PHONY: cluster-up cluster-down load-imgs copy-configs gen-secrets
+.PHONY: cluster-up cluster-down create-ns load-imgs copy-configs gen-secrets
 
 cluster-up:
 	@if [ "$$(kind get clusters | grep -w $(CLUSTER_NAME))" = "$(CLUSTER_NAME)" ]; then \
@@ -29,6 +30,11 @@ cluster-down:
 	@kind delete cluster --name $(CLUSTER_NAME)
 	@echo "✨ All nodes, networking, and Calico components have been removed."
 
+create-ns:
+	@echo "🚀 Creating namespace: $(NAMESPACE)..."
+	@kubectl create namespace $(NAMESPACE)
+	@echo "✅ Namespace created"
+
 load-imgs:
 	@echo "🚀 Building container images..."
 	@docker build -t order-api:local -f ../../order_api/Dockerfile ../../order_api
@@ -55,18 +61,3 @@ gen-secrets:
 		cp "$$sample" "$$target"; \
 	done
 	@echo "✅ Environment files initialized."
-	@echo "🔐 Deep-scanning for secret templates..."
-	@for template in $$(find . -name "secret.yaml.tmpl"); do \
-		dir=$$(dirname $$template); \
-		if [ -f "$$dir/.env" ]; then \
-			echo "  -> Processing: $$dir"; \
-			( \
-				cd $$dir && \
-				set -a; . ./.env; set +a; \
-				envsubst < secret.yaml.tmpl | kubectl apply -f -; \
-			) \
-		else \
-			echo "  ⚠️  Skipping $$dir: Template found, but no .env file present."; \
-		fi \
-	done
-	@echo "✅ Secret generation complete."

@@ -1,10 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: order-api-ingress
-  namespace: order-system
-  labels:
-    part-of: order-system
+  name: order-api
 spec:
   ingressClassName: nginx
   rules:

@@ -1,21 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: order-api-deployment
-  namespace: order-system
-  labels:
-    app: order-api
-    part-of: order-system
+  name: order-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: order-api
+      app.kubernetes.io/name: order-api
   template:
     metadata:
-      labels:
-        app: order-api
-        part-of: order-system
     spec:
       containers:
       - name: order-api
@@ -24,19 +17,21 @@ spec:
         ports:
         - containerPort: 8080
         envFrom:
-        - secretRef:
-            name: order-api-secrets
+        - configMapRef:
+            name: order-api-env
+        # - secretRef: 
+        #     name: order-api-secrets
         volumeMounts:
         - name: config-volume
           mountPath: /opt/order_api/config/
           readOnly: true
         resources:
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "1Gi"
       volumes:
       - name: config-volume
         configMap:
