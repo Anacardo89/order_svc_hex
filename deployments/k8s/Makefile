@@ -1,7 +1,7 @@
 CALICO_VERSION := v3.27.3
 CLUSTER_NAME := order-system-cluster
 
-.PHONY: cluster-up cluster-down load-imgs gen-secrets
+.PHONY: cluster-up cluster-down load-imgs copy-configs gen-secrets
 
 cluster-up:
 	@if [ "$$(kind get clusters | grep -w $(CLUSTER_NAME))" = "$(CLUSTER_NAME)" ]; then \
@@ -38,6 +38,13 @@ load-imgs:
 	@kind load docker-image order-api:local --name $(CLUSTER_NAME)
 	@kind load docker-image order-svc:local --name $(CLUSTER_NAME)
 	@echo "✅ Images loaded successfully!"
+
+copy-configs:
+	@echo "🏗️ Preparing deployment context..."
+	@echo "📂 Copying config Files..."
+	@cp ../../configs/order-api-config.yaml ./app/order-system/order_api/config.yaml
+	@cp ../../configs/order-svc-config.yaml ./app/order-system/order_svc/config.yaml
+	@echo "✅ Configs copied."
 
 gen-secrets:
 	@echo "📂 Initializing .env files from samples..."
