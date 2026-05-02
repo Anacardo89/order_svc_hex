@@ -1,8 +1,7 @@
 CALICO_VERSION := v3.27.3
 CLUSTER_NAME := order-system-cluster
-NAMESPACE := order-system
 
-.PHONY: cluster-up cluster-down create-ns load-imgs copy-configs gen-secrets
+.PHONY: cluster-up cluster-down create-ns load-imgs copy-configs
 
 cluster-up:
 	@if [ "$$(kind get clusters | grep -w $(CLUSTER_NAME))" = "$(CLUSTER_NAME)" ]; then \
@@ -31,9 +30,11 @@ cluster-down:
 	@echo "✨ All nodes, networking, and Calico components have been removed."
 
 create-ns:
-	@echo "🚀 Creating namespace: $(NAMESPACE)..."
-	@kubectl create namespace $(NAMESPACE)
-	@echo "✅ Namespace created"
+	@echo "🚀 Creating namespaces..."
+	@kubectl create namespace order-system
+	@kubectl create namespace messaging
+	@kubectl create namespace monitoring
+	@echo "✅ Namespaces created"
 
 load-imgs:
 	@echo "🚀 Building container images..."
@@ -48,16 +49,11 @@ load-imgs:
 copy-configs:
 	@echo "🏗️ Preparing deployment context..."
 	@echo "📂 Copying config Files..."
+	@cp sample.env .env
 	@cp ../../configs/order-api-config.yaml ./app/order-system/order_api/config.yaml
 	@cp ../../configs/order-svc-config.yaml ./app/order-system/order_svc/config.yaml
 	@echo "✅ Configs copied."
 
-gen-secrets:
-	@echo "📂 Initializing .env files from samples..."
-	@for sample in $$(find . -name "sample.env"); do \
-		target="$${sample%/*}/.env"; \
-		[ -f "$$target" ] && { echo "  ⚠️ Skipping $$target"; continue; }; \
-		echo "  -> Creating $$target"; \
-		cp "$$sample" "$$target"; \
-	done
-	@echo "✅ Environment files initialized."
+helm-up:
+	@helm repo add bitnami https://charts.bitnami.com/bitnami
+	@helm repo update
