@@ -8,5 +8,14 @@ commonLabels:
   app.kubernetes.io/managed-by: kustomize
 
 resources:
-  - order_api
-  - order_svc
+  - order-system/order_api
+  - order-system/order_svc
+  - order-system/postgres
+
+helmCharts:
+- name: postgresql
+  repo: https://charts.bitnami.com/bitnami
+  version: 15.5.x
+  releaseName: order-db
+  namespace: order-system
+  valuesFile: order-system/postgres/values.yaml

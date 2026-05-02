@@ -1,0 +1,21 @@
+global:
+  postgresql:
+    auth:
+      database: orders-db
+      username: admin
+      existingSecret: "postgres-credentials"
+      secretKeys:
+        adminPasswordKey: "postgres-root-password"
+        userPasswordKey: "postgres-password"
+
+primary:
+  persistence:
+    enabled: true
+    size: 8Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi

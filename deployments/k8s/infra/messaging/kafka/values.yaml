@@ -1,0 +1,28 @@
+kraft:
+  enabled: true
+
+externalAccess:
+  enabled: false
+
+service:
+  type: ClusterIP
+  ports:
+    client: 9092
+
+primary:
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+autoCreateTopicsEnable: true
+
+metrics:
+  kafka:
+    enabled: true
